@@ -46,8 +46,8 @@ namespace SchoolHeath.Controllers
                     return Unauthorized(new { message = "Tên đăng nhập, mật khẩu hoặc vai trò không đúng" });
                 }
 
-                // *** SỬA Ở ĐÂY: KIỂM TRA ROLE SAU KHI TÌM THẤY USERNAME ***
-                if (!account.Role.Equals(dto.Role, StringComparison.OrdinalIgnoreCase))
+                // Kiểm tra role
+                if (!string.Equals(account.Role, dto.Role, StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.LogWarning("Login failed: Incorrect role for user {Username}. Expected {ExpectedRole}, but got {ActualRole}", dto.Username, account.Role, dto.Role);
                     await Task.Delay(new Random().Next(300, 500));
@@ -59,7 +59,7 @@ namespace SchoolHeath.Controllers
                 bool passwordValid = false;
                 try
                 {
-                    if (account.Password?.StartsWith("$2") == true)
+                    if (!string.IsNullOrEmpty(account.Password) && account.Password.StartsWith("$2")) // BCrypt hash
                     {
                         passwordValid = BCrypt.Net.BCrypt.Verify(dto.Password, account.Password);
                         _logger.LogDebug("BCrypt verification result: {Result}", passwordValid);
@@ -68,7 +68,7 @@ namespace SchoolHeath.Controllers
                     {
                         passwordValid = dto.Password == account.Password;
                         _logger.LogWarning("Plain text password comparison used: {Result}", passwordValid);
-                        if (!Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")?.Equals("Development", StringComparison.OrdinalIgnoreCase) ?? false)
+                        if (!IsDevelopment())
                         {
                             _logger.LogCritical("SECURITY RISK: Plain text password comparison in production!");
                         }
@@ -87,11 +87,12 @@ namespace SchoolHeath.Controllers
                     return Unauthorized(new { message = "Tên đăng nhập, mật khẩu hoặc vai trò không đúng" });
                 }
 
+                // Update last login & hash password if plain text
                 var accountToUpdate = await _context.Accounts.FindAsync(account.AccountId);
                 if (accountToUpdate != null)
                 {
                     accountToUpdate.LastLogin = DateTime.Now;
-                    if (!accountToUpdate.Password.StartsWith("$2"))
+                    if (!string.IsNullOrEmpty(accountToUpdate.Password) && !accountToUpdate.Password.StartsWith("$2"))
                     {
                         _logger.LogInformation("Hashing plain text password for {Username} during login", account.Username);
                         accountToUpdate.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password);
@@ -99,6 +100,7 @@ namespace SchoolHeath.Controllers
                     await _context.SaveChangesAsync();
                 }
 
+                // Claims
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, account.Username),
@@ -124,19 +126,19 @@ namespace SchoolHeath.Controllers
 
                 var user = new
                 {
-                    id = account.AccountId.ToString(),
+                    id = account.AccountId,
                     username = account.Username,
                     role = account.Role,
                     createdAt = account.CreatedAt,
                     updatedAt = account.UpdatedAt,
-                    lastLogin = account.LastLogin
+                    lastLogin = accountToUpdate?.LastLogin
                 };
 
                 return Ok(new
                 {
                     success = true,
                     message = "Đăng nhập thành công",
-                    user = user
+                    user
                 });
             }
             catch (Exception ex)
@@ -147,6 +149,7 @@ namespace SchoolHeath.Controllers
         }
 
         [HttpPost("logout")]
+        [Authorize]
         public async Task<IActionResult> Logout()
         {
             try
@@ -168,16 +171,12 @@ namespace SchoolHeath.Controllers
         {
             if (User.Identity?.IsAuthenticated == true)
             {
-                var role = User.FindFirst(ClaimTypes.Role)?.Value;
-                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var username = User.Identity.Name;
-
                 return Ok(new
                 {
                     isAuthenticated = true,
-                    username,
-                    userId,
-                    role
+                    username = User.Identity.Name,
+                    userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                    role = User.FindFirst(ClaimTypes.Role)?.Value
                 });
             }
 
@@ -193,7 +192,7 @@ namespace SchoolHeath.Controllers
                 message = "Xác thực thành công. Bạn đã đăng nhập.",
                 authenticatedUser = User.Identity?.Name,
                 role = User.FindFirst(ClaimTypes.Role)?.Value,
-                claims = User.Claims.Select(c => new { Type = c.Type, Value = c.Value }).ToList(),
+                claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList(),
                 time = DateTime.Now
             });
         }
@@ -211,7 +210,7 @@ namespace SchoolHeath.Controllers
                     message = $"Bạn có quyền truy cập với vai trò: {role}",
                     authenticated = true,
                     username = User.Identity?.Name,
-                    userRole = userRole
+                    userRole
                 });
             }
 
@@ -224,7 +223,7 @@ namespace SchoolHeath.Controllers
         [HttpGet("debug/accounts")]
         public async Task<IActionResult> DebugAccounts()
         {
-            if (!Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")?.Equals("Development", StringComparison.OrdinalIgnoreCase) ?? false)
+            if (!IsDevelopment())
             {
                 return NotFound();
             }
@@ -242,6 +241,12 @@ namespace SchoolHeath.Controllers
                 .ToListAsync();
 
             return Ok(accounts);
+        }
+
+        private bool IsDevelopment()
+        {
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+            return env != null && env.Equals("Development", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

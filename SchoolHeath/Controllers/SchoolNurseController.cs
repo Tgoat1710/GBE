@@ -30,7 +30,8 @@ namespace SchoolHeath.Controllers
         [HttpGet("students")]
         public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
         {
-            return await _context.Students.ToListAsync();
+            var students = await _context.Students.AsNoTracking().ToListAsync();
+            return Ok(students);
         }
 
         /// <summary>
@@ -39,9 +40,9 @@ namespace SchoolHeath.Controllers
         [HttpGet("students/{id}")]
         public async Task<ActionResult<Student>> GetStudent(int id)
         {
-            var student = await _context.Students.FindAsync(id);
+            var student = await _context.Students.AsNoTracking().FirstOrDefaultAsync(s => s.StudentId == id);
             if (student == null) return NotFound();
-            return student;
+            return Ok(student);
         }
 
         /// <summary>
@@ -50,9 +51,9 @@ namespace SchoolHeath.Controllers
         [HttpGet("students/{id}/health")]
         public async Task<ActionResult<HealthRecord>> GetHealthRecord(int id)
         {
-            var record = await _context.HealthRecords.FirstOrDefaultAsync(r => r.StudentId == id);
+            var record = await _context.HealthRecords.AsNoTracking().FirstOrDefaultAsync(r => r.StudentId == id);
             if (record == null) return NotFound();
-            return record;
+            return Ok(record);
         }
 
         /// <summary>
@@ -71,6 +72,8 @@ namespace SchoolHeath.Controllers
                 record.StudentId = id;
                 record.UpdatedAt = DateTime.UtcNow;
                 _context.HealthRecords.Add(record);
+                await _context.SaveChangesAsync();
+                return CreatedAtAction(nameof(GetHealthRecord), new { id = student.StudentId }, record);
             }
             else
             {
@@ -79,10 +82,9 @@ namespace SchoolHeath.Controllers
                 existingRecord.VisionStatus = record.VisionStatus;
                 existingRecord.MedicalHistory = record.MedicalHistory;
                 existingRecord.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return Ok(existingRecord);
             }
-
-            await _context.SaveChangesAsync();
-            return existingRecord ?? record;
         }
 
         /// <summary>
@@ -91,10 +93,12 @@ namespace SchoolHeath.Controllers
         [HttpGet("medications")]
         public async Task<ActionResult<IEnumerable<MedicationRequest>>> GetMedicationRequests()
         {
-            return await _context.MedicationRequests
+            var requests = await _context.MedicationRequests
                 .Include(m => m.Student)
                 .Include(m => m.Medicine)
+                .AsNoTracking()
                 .ToListAsync();
+            return Ok(requests);
         }
 
         /// <summary>
@@ -103,15 +107,12 @@ namespace SchoolHeath.Controllers
         [HttpPost("medications")]
         public async Task<ActionResult<MedicationRequest>> AddMedicationRequest([FromBody] MedicationRequest request)
         {
-            // Ensure the student exists
             var student = await _context.Students.FindAsync(request.StudentId);
             if (student == null) return BadRequest("Student not found");
 
-            // Ensure the medicine exists
             var medicine = await _context.MedicineInventories.FindAsync(request.MedicineId);
             if (medicine == null) return BadRequest("Medicine not found");
 
-            // Set RequestedBy to the current user's account ID
             var accountIdClaim = User.FindFirst("AccountId");
             if (accountIdClaim != null && int.TryParse(accountIdClaim.Value, out int accountId))
             {
@@ -119,7 +120,6 @@ namespace SchoolHeath.Controllers
             }
             else
             {
-                // Use the first SchoolNurse account as fallback in development
                 var nurse = await _context.SchoolNurses.FirstOrDefaultAsync();
                 if (nurse != null)
                 {
@@ -149,10 +149,11 @@ namespace SchoolHeath.Controllers
             var request = await _context.MedicationRequests
                 .Include(m => m.Student)
                 .Include(m => m.Medicine)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.RequestId == id);
 
             if (request == null) return NotFound();
-            return request;
+            return Ok(request);
         }
 
         /// <summary>
@@ -171,7 +172,7 @@ namespace SchoolHeath.Controllers
             request.Notes = updated.Notes;
 
             await _context.SaveChangesAsync();
-            return request;
+            return Ok(request);
         }
 
         /// <summary>
@@ -180,9 +181,11 @@ namespace SchoolHeath.Controllers
         [HttpGet("incidents")]
         public async Task<ActionResult<IEnumerable<MedicalEvent>>> GetMedicalEvents()
         {
-            return await _context.MedicalEvents
+            var incidents = await _context.MedicalEvents
                 .Include(m => m.Student)
+                .AsNoTracking()
                 .ToListAsync();
+            return Ok(incidents);
         }
 
         /// <summary>
@@ -191,11 +194,9 @@ namespace SchoolHeath.Controllers
         [HttpPost("incidents")]
         public async Task<ActionResult<MedicalEvent>> AddMedicalEvent([FromBody] MedicalEvent incident)
         {
-            // Ensure the student exists
             var student = await _context.Students.FindAsync(incident.StudentId);
             if (student == null) return BadRequest("Student not found");
 
-            // Set HandledBy to the current user's account ID if not provided
             if (incident.HandledBy == null)
             {
                 var accountIdClaim = User.FindFirst("AccountId");
@@ -205,7 +206,6 @@ namespace SchoolHeath.Controllers
                 }
                 else
                 {
-                    // Use the first SchoolNurse account as fallback in development
                     var nurse = await _context.SchoolNurses.FirstOrDefaultAsync();
                     if (nurse != null)
                     {
@@ -230,10 +230,11 @@ namespace SchoolHeath.Controllers
         {
             var incident = await _context.MedicalEvents
                 .Include(m => m.Student)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.EventId == id);
 
             if (incident == null) return NotFound();
-            return incident;
+            return Ok(incident);
         }
 
         /// <summary>
@@ -251,7 +252,7 @@ namespace SchoolHeath.Controllers
             incident.Notes = updated.Notes;
 
             await _context.SaveChangesAsync();
-            return incident;
+            return Ok(incident);
         }
     }
 }

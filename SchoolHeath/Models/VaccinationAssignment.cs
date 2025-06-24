@@ -1,3 +1,4 @@
+﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -18,7 +19,15 @@ namespace SchoolHeath.Models
         [Column("nurse_id")]
         public int NurseId { get; set; }
 
-        // Navigation properties
+        // Ng�y giao nhi?m v?
+        [Column("assigned_date", TypeName = "date")]
+        public DateTime AssignedDate { get; set; } = DateTime.UtcNow;
+
+        // Ghi ch� b? sung
+        [MaxLength(255)]
+        [Column("notes")]
+        public string? Notes { get; set; }
+
         [ForeignKey("CampaignId")]
         public virtual VaccinationCampaign Campaign { get; set; } = null!;
 

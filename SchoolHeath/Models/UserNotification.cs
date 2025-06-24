@@ -33,6 +33,12 @@ namespace SchoolHeath.Models // Đồng bộ namespace với toàn project
         [Column("is_read")]
         public bool IsRead { get; set; }
 
+        // Thêm trường Type để sửa lỗi CS0117
+        [Required]
+        [MaxLength(50)]
+        [Column("type")]
+        public string Type { get; set; } = null!;
+
         [ForeignKey("RecipientId")]
         public virtual Account Recipient { get; set; } = null!;
     }

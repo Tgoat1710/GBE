@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SchoolHeath.Models // Đồng bộ namespace với toàn project
+namespace SchoolHeath.Models
 {
     [Table("VaccinationConsent")]
     public partial class VaccinationConsent
@@ -17,7 +17,7 @@ namespace SchoolHeath.Models // Đồng bộ namespace với toàn project
 
         [Required]
         [Column("parent_id")]
-        public int ParentId { get; set; } // Sửa foreign key sang kiểu int, ánh xạ qua ParentId
+        public int ParentId { get; set; }
 
         [Required]
         [MaxLength(100)]
@@ -38,6 +38,11 @@ namespace SchoolHeath.Models // Đồng bộ namespace với toàn project
 
         [Column("campaign_id")]
         public int? CampaignId { get; set; }
+
+        // Sửa: đồng bộ tên trường với database, dùng "class" chứ không phải "class_name"
+        [MaxLength(50)]
+        [Column("class")]
+        public string? Class { get; set; }
 
         [ForeignKey("ParentId")]
         public virtual Parent Parent { get; set; } = null!;

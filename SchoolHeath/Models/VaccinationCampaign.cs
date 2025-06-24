@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -28,5 +28,10 @@ namespace SchoolHeath.Models
         [MaxLength(20)]
         [Column("status")]
         public string Status { get; set; } = "Planned"; // Planned, InProgress, Completed, Cancelled
+
+        // NEW: Lớp mục tiêu
+        [MaxLength(50)]
+        [Column("target_class")]
+        public string? TargetClass { get; set; }
     }
 }

@@ -35,6 +35,9 @@ namespace SchoolHeath.Models
         [Column("class")]
         public string Class { get; set; } = null!;
 
+        // ĐÃ BỎ property ClassName (chỉ dùng property Class để đồng bộ với DB và code)
+        // Nếu cần dùng tên lớp, chỉ dùng student.Class
+
         [MaxLength(100)]
         [Column("school")]
         public string? School { get; set; }

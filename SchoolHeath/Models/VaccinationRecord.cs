@@ -42,5 +42,11 @@ namespace SchoolHeath.Models // Đồng bộ namespace với toàn project
 
         [ForeignKey("CampaignId")]
         public virtual VaccinationCampaign? Campaign { get; set; }
+
+        // BỔ SUNG THUỘC TÍNH NÀY
+        [Required]
+        [MaxLength(20)]
+        [Column("status")]
+        public string Status { get; set; } = string.Empty;
     }
 }
