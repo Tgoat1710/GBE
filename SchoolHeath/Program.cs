@@ -8,6 +8,7 @@ namespace SchoolHeath
     {
         public static void Main(string[] args)
         {
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
@@ -208,8 +209,9 @@ namespace SchoolHeath
                     Timestamp = DateTime.UtcNow 
                 });
             });
-
+           
             app.Run();
+           
         }
         
         // Helper method to determine if a request is an API request
