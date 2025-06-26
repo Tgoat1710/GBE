@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using SchoolHeath.Services;
 
 namespace SchoolHeath.Controllers
 {
@@ -17,11 +18,13 @@ namespace SchoolHeath.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SchoolNurseController> _logger;
+        private readonly MedicalEventService _medicalEventService;
 
-        public SchoolNurseController(ApplicationDbContext context, ILogger<SchoolNurseController> logger)
+        public SchoolNurseController(ApplicationDbContext context, ILogger<SchoolNurseController> logger, MedicalEventService medicalEventService)
         {
             _context = context;
             _logger = logger;
+            _medicalEventService = medicalEventService;
         }
 
         /// <summary>
@@ -214,12 +217,8 @@ namespace SchoolHeath.Controllers
                 }
             }
 
-            incident.EventDate = DateTime.UtcNow;
-
-            _context.MedicalEvents.Add(incident);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetMedicalEvent), new { id = incident.EventId }, incident);
+            var result = await _medicalEventService.RecordMedicalEventAsync(incident);
+            return CreatedAtAction(nameof(GetMedicalEvent), new { id = result.EventId }, result);
         }
 
         /// <summary>

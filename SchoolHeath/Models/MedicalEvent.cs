@@ -39,6 +39,10 @@ namespace SchoolHeath.Models // Sửa lại namespace cho đồng bộ toàn pro
         [Column("notes")]
         public string? Notes { get; set; }
 
+        [MaxLength(255)]
+        [Column("used_supplies")]
+        public string? UsedSupplies { get; set; }
+
         // Navigation properties
         [ForeignKey("HandledBy")]
         public virtual Account? HandledByNavigation { get; set; }
