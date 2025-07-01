@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SchoolHeath.DTOs;
 using SchoolHeath.Models;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using SchoolHeath.Services;
@@ -19,6 +21,7 @@ namespace SchoolHeath.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SchoolNurseController> _logger;
         private readonly MedicalEventService _medicalEventService;
+        private readonly string _uploadFolder = "Uploads/Prescriptions"; // Thư mục lưu ảnh
 
         public SchoolNurseController(ApplicationDbContext context, ILogger<SchoolNurseController> logger, MedicalEventService medicalEventService)
         {
@@ -28,7 +31,7 @@ namespace SchoolHeath.Controllers
         }
 
         /// <summary>
-        /// Get all students
+        /// Lấy danh sách học sinh
         /// </summary>
         [HttpGet("students")]
         public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
@@ -38,7 +41,7 @@ namespace SchoolHeath.Controllers
         }
 
         /// <summary>
-        /// Get a student by id
+        /// Lấy chi tiết học sinh
         /// </summary>
         [HttpGet("students/{id}")]
         public async Task<ActionResult<Student>> GetStudent(int id)
@@ -49,7 +52,7 @@ namespace SchoolHeath.Controllers
         }
 
         /// <summary>
-        /// Get health record for a student
+        /// Lấy hồ sơ sức khỏe học sinh
         /// </summary>
         [HttpGet("students/{id}/health")]
         public async Task<ActionResult<HealthRecord>> GetHealthRecord(int id)
@@ -60,7 +63,7 @@ namespace SchoolHeath.Controllers
         }
 
         /// <summary>
-        /// Add or update health record for a student
+        /// Thêm hoặc cập nhật hồ sơ sức khỏe
         /// </summary>
         [HttpPost("students/{id}/health")]
         public async Task<ActionResult<HealthRecord>> AddOrUpdateHealthRecord(int id, [FromBody] HealthRecord record)
@@ -91,42 +94,54 @@ namespace SchoolHeath.Controllers
         }
 
         /// <summary>
-        /// Get all medication requests
-        /// </summary>
-        [HttpGet("medications")]
-        public async Task<ActionResult<IEnumerable<MedicationRequest>>> GetMedicationRequests()
-        {
-            var requests = await _context.MedicationRequests
-                .Include(m => m.Student)
-                .Include(m => m.Medicine)
-                .AsNoTracking()
-                .ToListAsync();
-            return Ok(requests);
-        }
-
-        /// <summary>
-        /// Add a new medication request
+        /// Gửi đơn thuốc (có nhận file ảnh)
         /// </summary>
         [HttpPost("medications")]
-        public async Task<ActionResult<MedicationRequest>> AddMedicationRequest([FromBody] MedicationRequest request)
+        [RequestSizeLimit(10_000_000)] // 10MB
+        public async Task<ActionResult<MedicationRequest>> AddMedicationRequest([FromForm] MedicationRequestDTO requestDto)
         {
-            var student = await _context.Students.FindAsync(request.StudentId);
+            var student = await _context.Students.FindAsync(requestDto.StudentId);
             if (student == null) return BadRequest("Student not found");
 
-            var medicine = await _context.MedicineInventories.FindAsync(request.MedicineId);
-            if (medicine == null) return BadRequest("Medicine not found");
+            // Kiểm tra từng loại thuốc
+            foreach (var item in requestDto.Medicines)
+            {
+                var medicine = await _context.MedicineInventories.FindAsync(item.MedicineId);
+                if (medicine == null)
+                {
+                    return BadRequest($"Medicine with ID {item.MedicineId} not found");
+                }
+            }
+
+            // Xử lý upload ảnh đơn thuốc
+            string? prescriptionImageUrl = null;
+            if (requestDto.PrescriptionImage != null && requestDto.PrescriptionImage.Length > 0)
+            {
+                if (!Directory.Exists(_uploadFolder))
+                    Directory.CreateDirectory(_uploadFolder);
+
+                var fileName = Guid.NewGuid() + Path.GetExtension(requestDto.PrescriptionImage.FileName);
+                var filePath = Path.Combine(_uploadFolder, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await requestDto.PrescriptionImage.CopyToAsync(stream);
+                }
+                prescriptionImageUrl = $"{_uploadFolder}/{fileName}".Replace("\\", "/");
+            }
 
             var accountIdClaim = User.FindFirst("AccountId");
+            int requestedBy = 0;
             if (accountIdClaim != null && int.TryParse(accountIdClaim.Value, out int accountId))
             {
-                request.RequestedBy = accountId;
+                requestedBy = accountId;
             }
             else
             {
                 var nurse = await _context.SchoolNurses.FirstOrDefaultAsync();
                 if (nurse != null)
                 {
-                    request.RequestedBy = nurse.AccountId;
+                    requestedBy = nurse.AccountId;
                 }
                 else
                 {
@@ -134,24 +149,54 @@ namespace SchoolHeath.Controllers
                 }
             }
 
-            request.RequestDate = DateTime.UtcNow;
-            request.Status = "Chờ xác nhận";
+            var medicationRequest = new MedicationRequest
+            {
+                StudentId = requestDto.StudentId,
+                RequestedBy = requestedBy,
+                RequestDate = DateTime.UtcNow,
+                Status = "Chờ xác nhận",
+                Notes = requestDto.Notes,
+                PrescriptionImageUrl = prescriptionImageUrl,
+                Medicines = requestDto.Medicines.Select(item => new MedicationRequestItem
+                {
+                    MedicineId = item.MedicineId,
+                    Dosage = item.Dosage,
+                    Frequency = item.Frequency,
+                    Duration = item.Duration
+                }).ToList()
+            };
 
-            _context.MedicationRequests.Add(request);
+            _context.MedicationRequests.Add(medicationRequest);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetMedicationRequest), new { id = request.RequestId }, request);
+            return CreatedAtAction(nameof(GetMedicationRequest), new { id = medicationRequest.RequestId }, medicationRequest);
         }
 
         /// <summary>
-        /// Get a medication request by id
+        /// Lấy danh sách đơn thuốc (bao gồm thuốc con)
+        /// </summary>
+        [HttpGet("medications")]
+        public async Task<ActionResult<IEnumerable<MedicationRequest>>> GetMedicationRequests()
+        {
+            var requests = await _context.MedicationRequests
+                .Include(m => m.Student)
+                .Include(m => m.Medicines)
+                    .ThenInclude(mi => mi.Medicine)
+                .AsNoTracking()
+                .ToListAsync();
+            return Ok(requests);
+        }
+
+        /// <summary>
+        /// Lấy chi tiết 1 đơn thuốc (bao gồm thuốc con)
         /// </summary>
         [HttpGet("medications/{id}")]
         public async Task<ActionResult<MedicationRequest>> GetMedicationRequest(int id)
         {
             var request = await _context.MedicationRequests
                 .Include(m => m.Student)
-                .Include(m => m.Medicine)
+                .Include(m => m.Medicines)
+                    .ThenInclude(mi => mi.Medicine)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.RequestId == id);
 
@@ -160,17 +205,16 @@ namespace SchoolHeath.Controllers
         }
 
         /// <summary>
-        /// Update a medication request
+        /// Cập nhật đơn thuốc (chỉ cập nhật trạng thái, notes)
         /// </summary>
         [HttpPut("medications/{id}")]
         public async Task<ActionResult<MedicationRequest>> UpdateMedicationRequest(int id, [FromBody] MedicationRequest updated)
         {
-            var request = await _context.MedicationRequests.FindAsync(id);
+            var request = await _context.MedicationRequests
+                .Include(m => m.Medicines)
+                .FirstOrDefaultAsync(m => m.RequestId == id);
             if (request == null) return NotFound();
 
-            request.Dosage = updated.Dosage;
-            request.Frequency = updated.Frequency;
-            request.Duration = updated.Duration;
             request.Status = updated.Status;
             request.Notes = updated.Notes;
 
@@ -179,7 +223,7 @@ namespace SchoolHeath.Controllers
         }
 
         /// <summary>
-        /// Get all medical events
+        /// Lấy tất cả sự kiện y tế
         /// </summary>
         [HttpGet("incidents")]
         public async Task<ActionResult<IEnumerable<MedicalEvent>>> GetMedicalEvents()
@@ -192,7 +236,7 @@ namespace SchoolHeath.Controllers
         }
 
         /// <summary>
-        /// Add a new medical event
+        /// Thêm sự kiện y tế
         /// </summary>
         [HttpPost("incidents")]
         public async Task<ActionResult<MedicalEvent>> AddMedicalEvent([FromBody] MedicalEvent incident)
@@ -222,7 +266,7 @@ namespace SchoolHeath.Controllers
         }
 
         /// <summary>
-        /// Get a medical event by id
+        /// Lấy chi tiết sự kiện y tế
         /// </summary>
         [HttpGet("incidents/{id}")]
         public async Task<ActionResult<MedicalEvent>> GetMedicalEvent(int id)
@@ -237,7 +281,7 @@ namespace SchoolHeath.Controllers
         }
 
         /// <summary>
-        /// Update a medical event
+        /// Cập nhật sự kiện y tế
         /// </summary>
         [HttpPut("incidents/{id}")]
         public async Task<ActionResult<MedicalEvent>> UpdateMedicalEvent(int id, [FromBody] MedicalEvent updated)
