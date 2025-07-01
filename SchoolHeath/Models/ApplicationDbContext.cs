@@ -24,6 +24,11 @@ namespace SchoolHeath.Models // Sửa lại cho đúng với project của bạn
         public virtual DbSet<VaccinationRecord> VaccinationRecords { get; set; } = null!;
         public virtual DbSet<VaccinationCampaign> VaccinationCampaigns { get; set; } = null!;
         public virtual DbSet<VaccinationAssignment> VaccinationAssignments { get; set; } = null!;
+        public virtual DbSet<HealthCampaign> HealthCampaigns { get; set; } = null!;
+        public virtual DbSet<HealthCheckSchedule> HealthCheckSchedules { get; set; } = null!;
+        public virtual DbSet<HealthCheckResult> HealthCheckResults { get; set; } = null!;
+        public virtual DbSet<Attendance> Attendances { get; set; } = null!;
+        public virtual DbSet<NurseAssignment> NurseAssignments { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
