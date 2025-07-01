@@ -1,11 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using SchoolHeath.Models;
 using SchoolHeath.Services;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -37,14 +35,14 @@ namespace SchoolHeath.Controllers
                     student.StudentId,
                     student.Name,
                     student.Class,
-                    student.BirthDate,
+                    Dob = student.Dob,
                     student.Gender
                 },
                 Parent = student.Parent != null ? new {
                     student.Parent.ParentId,
                     student.Parent.Name,
                     student.Parent.Phone,
-                    student.Parent.Email
+                    student.Parent.Cccd
                 } : null
             });
         }
@@ -73,10 +71,10 @@ namespace SchoolHeath.Controllers
         [Authorize(Policy = "RequireManagerRole")]
         public async Task<IActionResult> GetMedicalEvents([FromQuery] int? studentId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? eventType)
         {
-            var query = _context.MedicalEvents.Include(e => e.Student).AsQueryable();
-            if (studentId.HasValue) query = query.Where(e => e.StudentId == studentId);
-            if (from.HasValue) query = query.Where(e => e.EventDate >= from);
-            if (to.HasValue) query = query.Where(e => e.EventDate <= to);
+var query = _context.MedicalEvents.Include(e => e.Student).AsQueryable();
+            if (studentId.HasValue) query = query.Where(e => e.StudentId == studentId.Value);
+            if (from.HasValue) query = query.Where(e => e.EventDate >= from.Value);
+            if (to.HasValue) query = query.Where(e => e.EventDate <= to.Value);
             if (!string.IsNullOrEmpty(eventType)) query = query.Where(e => e.EventType == eventType);
             var events = await query.OrderByDescending(e => e.EventDate).ToListAsync();
             return Ok(events);
