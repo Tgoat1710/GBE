@@ -9,6 +9,7 @@ namespace SchoolHeath.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Policy = "RequireManagerRole")]
     public class HealthCheckResultController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
