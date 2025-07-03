@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SchoolHeath.Models;
 using SchoolHeath.Models; // Namespace đồng nhất cho models
 
 namespace SchoolHeath.Models // Sửa lại cho đúng với project của bạn

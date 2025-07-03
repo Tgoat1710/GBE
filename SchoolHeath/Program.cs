@@ -140,10 +140,10 @@ namespace SchoolHeath
             // Authorization Policies
             builder.Services.AddAuthorization(options =>
             {
-                options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("Admin"));
-                options.AddPolicy("RequireManagerRole", policy => policy.RequireRole("Manager"));
-                options.AddPolicy("RequireParentRole", policy => policy.RequireRole("Parent"));
-                options.AddPolicy("RequireNurseRole", policy => policy.RequireRole("Nurse", "SchoolNurse"));
+                options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("admin"));
+                options.AddPolicy("RequireManagerRole", policy => policy.RequireRole("manager"));
+                options.AddPolicy("RequireParentRole", policy => policy.RequireRole("parent"));
+                options.AddPolicy("RequireNurseRole", policy => policy.RequireRole("nurse"));
                 
                 // Tài khoản đã xác thực gần đây (dưới 30 phút)
                 options.AddPolicy("RecentlyAuthenticated", policy => 

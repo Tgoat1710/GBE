@@ -11,6 +11,7 @@ namespace SchoolHeath.Controllers
 {
     [ApiController]
     [Route("api/medical-event")]
+    
     public class MedicalEventController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -68,7 +69,7 @@ namespace SchoolHeath.Controllers
 
         // 4. Manager xem danh sách sự cố y tế (có thể lọc theo học sinh, ngày, loại sự cố)
         [HttpGet]
-        [Authorize(Policy = "RequireManagerRole")]
+        [Authorize(Policy = "RequireNurseRole")]
         public async Task<IActionResult> GetMedicalEvents([FromQuery] int? studentId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? eventType)
         {
 var query = _context.MedicalEvents.Include(e => e.Student).AsQueryable();

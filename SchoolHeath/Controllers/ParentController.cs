@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using SchoolHeath.Models;
 using SchoolHeath.Models;        // Đảm bảo đúng namespace, nếu trong project là SchoolHeath
 using SchoolHeath.Services;      // Đảm bảo đúng namespace
 using System.Threading.Tasks;
