@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolHeath.Models;
+using SchoolHeath.Models.DTOs;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -101,6 +102,64 @@ namespace SchoolHeath.Controllers
                 }
             };
             return Ok(report);
+        }
+
+        /// <summary>
+        /// Get notifications for a user (supports vaccination notifications)
+        /// </summary>
+        [HttpGet("user/{userId}")]
+        [AllowAnonymous] // Can be accessed by parent, manager, or nurse based on userId
+        public async Task<ActionResult<IEnumerable<VaccinationNotification>>> GetUserNotifications(int userId)
+        {
+            // Get user's account to verify access
+            var account = await _context.Accounts.FindAsync(userId);
+            if (account == null)
+                return NotFound("User not found");
+
+            // Verify user can only access their own notifications
+            var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (currentUserIdClaim == null || !int.TryParse(currentUserIdClaim.Value, out int currentUserId) || currentUserId != userId)
+                return Forbid("You can only access your own notifications");
+
+            var notifications = await _context.UserNotifications
+                .Where(n => n.RecipientId == userId)
+                .OrderByDescending(n => n.CreatedAt)
+                .ToListAsync();
+
+            var vaccinationNotifications = notifications.Select(n => new VaccinationNotification
+            {
+                NotificationId = n.NotificationId,
+                RecipientId = n.RecipientId,
+                Title = n.Title,
+                Message = n.Message,
+                CreatedAt = n.CreatedAt,
+                IsRead = n.IsRead,
+                Type = n.Type
+            }).ToList();
+
+            return Ok(vaccinationNotifications);
+        }
+
+        /// <summary>
+        /// Mark notification as read
+        /// </summary>
+        [HttpPut("mark-read/{notificationId}")]
+        [AllowAnonymous]
+        public async Task<ActionResult> MarkNotificationAsRead(int notificationId)
+        {
+            var notification = await _context.UserNotifications.FindAsync(notificationId);
+            if (notification == null)
+                return NotFound("Notification not found");
+
+            // Verify user can only mark their own notifications as read
+            var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (currentUserIdClaim == null || !int.TryParse(currentUserIdClaim.Value, out int currentUserId) || currentUserId != notification.RecipientId)
+                return Forbid("You can only mark your own notifications as read");
+
+            notification.IsRead = true;
+            await _context.SaveChangesAsync();
+
+            return Ok("Notification marked as read");
         }
     }
 } 
