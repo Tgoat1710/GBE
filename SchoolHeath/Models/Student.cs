@@ -47,8 +47,9 @@ namespace SchoolHeath.Models
         public string? Address { get; set; }
 
         [Required]
-        [Column("parent_id")]
-        public int ParentId { get; set; }
+        [MaxLength(20)]
+        [Column("parent_cccd")]
+        public string ParentCccd { get; set; } = null!;
 
         [MaxLength(5)]
         [Column("blood_type")]
@@ -65,8 +66,8 @@ namespace SchoolHeath.Models
         public string? Status { get; set; }
 
         // Navigation properties
-        [ForeignKey("ParentId")]
-        public virtual Parent Parent { get; set; } = null!;
+        // [ForeignKey("ParentId")]
+        // public virtual Parent Parent { get; set; } = null!;
 
         public virtual ICollection<HealthCheckup> HealthCheckups { get; set; } = new List<HealthCheckup>();
 

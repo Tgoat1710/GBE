@@ -28,8 +28,9 @@ namespace SchoolHeath.Controllers
         [Authorize(Policy = "RequireNurseRole")]
         public async Task<IActionResult> GetStudentAndParent(int studentId)
         {
-            var student = await _context.Students.Include(s => s.Parent).FirstOrDefaultAsync(s => s.StudentId == studentId);
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.StudentId == studentId);
             if (student == null) return NotFound();
+            var parent = await _context.Parents.FirstOrDefaultAsync(p => p.Cccd == student.ParentCccd);
             return Ok(new
             {
                 Student = new {
@@ -39,11 +40,10 @@ namespace SchoolHeath.Controllers
                     Dob = student.Dob,
                     student.Gender
                 },
-                Parent = student.Parent != null ? new {
-                    student.Parent.ParentId,
-                    student.Parent.Name,
-                    student.Parent.Phone,
-                    student.Parent.Cccd
+                Parent = parent != null ? new {
+                    parent.Cccd,
+                    parent.Name,
+                    parent.Phone
                 } : null
             });
         }
@@ -51,8 +51,25 @@ namespace SchoolHeath.Controllers
         // 2. SchoolNurse ghi nhận sự cố y tế (bao gồm vật tư y tế đã sử dụng)
         [HttpPost]
         [Authorize(Policy = "RequireNurseRole")]
-        public async Task<IActionResult> RecordMedicalEvent([FromBody] MedicalEvent incident)
+        public async Task<IActionResult> RecordMedicalEvent([FromBody] MedicalEventDto dto)
         {
+            // Lấy AccountId của nurse đang đăng nhập từ Claims
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int nurseId))
+            {
+                return Unauthorized("Không xác định được tài khoản ý tá đang đăng nhập.");
+            }
+
+            var incident = new MedicalEvent
+            {
+                StudentId = dto.StudentId,
+                EventType = dto.EventType,
+                Description = dto.Description,
+                Outcome = dto.Outcome,
+                Notes = dto.Notes,
+                UsedSupplies = dto.UsedSupplies,
+                HandledBy = nurseId // Gán tự động
+            };
             var result = await _medicalEventService.RecordMedicalEventAsync(incident);
             return CreatedAtAction(nameof(GetMedicalEvent), new { id = result.EventId }, result);
         }
@@ -67,7 +84,7 @@ namespace SchoolHeath.Controllers
             return Ok(incident);
         }
 
-        // 4. Manager xem danh sách sự cố y tế (có thể lọc theo học sinh, ngày, loại sự cố)
+        // 4. Nurse xem danh sách sự cố y tế (có thể lọc theo học sinh, ngày, loại sự cố)
         [HttpGet]
         [Authorize(Policy = "RequireNurseRole")]
         public async Task<IActionResult> GetMedicalEvents([FromQuery] int? studentId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? eventType)

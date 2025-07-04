@@ -405,30 +405,39 @@ namespace SchoolHeath.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequestId"));
 
-                    b.Property<string>("Dosage")
-                        .IsRequired()
+                    b.Property<DateTime?>("ActualAdministerTime")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("actual_administer_time");
+
+                    b.Property<string>("AdministerLocation")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
-                        .HasColumnName("dosage");
+                        .HasColumnName("administer_location");
 
-                    b.Property<string>("Duration")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("duration");
+                    b.Property<DateTime?>("AdministerTime")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("administer_time");
 
-                    b.Property<string>("Frequency")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("frequency");
-
-                    b.Property<int>("MedicineId")
-                        .HasColumnType("int")
-                        .HasColumnName("medicine_id");
+                    b.Property<int?>("MedicineInventoryMedicineId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("notes");
+
+                    b.Property<int?>("NurseId")
+                        .HasColumnType("int")
+                        .HasColumnName("nurse_id");
+
+                    b.Property<string>("PrescriptionImageUrl")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("prescription_image_url");
+
+                    b.Property<int?>("RemainingQuantity")
+                        .HasColumnType("int")
+                        .HasColumnName("remaining_quantity");
 
                     b.Property<DateTime>("RequestDate")
                         .HasColumnType("date")
@@ -450,13 +459,51 @@ namespace SchoolHeath.Migrations
 
                     b.HasKey("RequestId");
 
-                    b.HasIndex("MedicineId");
+                    b.HasIndex("MedicineInventoryMedicineId");
+
+                    b.HasIndex("NurseId");
 
                     b.HasIndex("RequestedBy");
 
                     b.HasIndex("StudentId");
 
                     b.ToTable("MedicationRequest");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.MedicationRequestItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Dosage")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Duration")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Frequency")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("MedicationRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MedicineId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MedicationRequestId");
+
+                    b.HasIndex("MedicineId");
+
+                    b.ToTable("MedicationRequestItem");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.MedicineInventory", b =>
@@ -634,9 +681,14 @@ namespace SchoolHeath.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("name");
 
-                    b.Property<int>("ParentId")
-                        .HasColumnType("int")
-                        .HasColumnName("parent_id");
+                    b.Property<string>("ParentCccd")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("parent_cccd");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("int");
 
                     b.Property<string>("School")
                         .HasMaxLength(100)
@@ -817,9 +869,14 @@ namespace SchoolHeath.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("notes");
 
-                    b.Property<int>("ParentId")
-                        .HasColumnType("int")
-                        .HasColumnName("parent_id");
+                    b.Property<string>("ParentCccd")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("parent_cccd");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("int");
 
                     b.Property<int>("StudentId")
                         .HasColumnType("int")
@@ -993,11 +1050,13 @@ namespace SchoolHeath.Migrations
 
             modelBuilder.Entity("SchoolHeath.Models.MedicationRequest", b =>
                 {
-                    b.HasOne("SchoolHeath.Models.MedicineInventory", "Medicine")
+                    b.HasOne("SchoolHeath.Models.MedicineInventory", null)
                         .WithMany("MedicationRequests")
-                        .HasForeignKey("MedicineId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("MedicineInventoryMedicineId");
+
+                    b.HasOne("SchoolHeath.Models.SchoolNurse", "Nurse")
+                        .WithMany()
+                        .HasForeignKey("NurseId");
 
                     b.HasOne("SchoolHeath.Models.Account", "RequestedByNavigation")
                         .WithMany("MedicationRequests")
@@ -1011,11 +1070,30 @@ namespace SchoolHeath.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Medicine");
+                    b.Navigation("Nurse");
 
                     b.Navigation("RequestedByNavigation");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.MedicationRequestItem", b =>
+                {
+                    b.HasOne("SchoolHeath.Models.MedicationRequest", "MedicationRequest")
+                        .WithMany("Medicines")
+                        .HasForeignKey("MedicationRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SchoolHeath.Models.MedicineInventory", "Medicine")
+                        .WithMany()
+                        .HasForeignKey("MedicineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MedicationRequest");
+
+                    b.Navigation("Medicine");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.MedicineInventory", b =>
@@ -1070,13 +1148,9 @@ namespace SchoolHeath.Migrations
 
             modelBuilder.Entity("SchoolHeath.Models.Student", b =>
                 {
-                    b.HasOne("SchoolHeath.Models.Parent", "Parent")
+                    b.HasOne("SchoolHeath.Models.Parent", null)
                         .WithMany("Students")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Parent");
+                        .HasForeignKey("ParentId");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.UserNotification", b =>
@@ -1115,11 +1189,9 @@ namespace SchoolHeath.Migrations
                         .WithMany()
                         .HasForeignKey("CampaignId");
 
-                    b.HasOne("SchoolHeath.Models.Parent", "Parent")
+                    b.HasOne("SchoolHeath.Models.Parent", null)
                         .WithMany("VaccinationConsents")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ParentId");
 
                     b.HasOne("SchoolHeath.Models.Student", "Student")
                         .WithMany("VaccinationConsents")
@@ -1128,8 +1200,6 @@ namespace SchoolHeath.Migrations
                         .IsRequired();
 
                     b.Navigation("Campaign");
-
-                    b.Navigation("Parent");
 
                     b.Navigation("Student");
                 });
@@ -1177,6 +1247,11 @@ namespace SchoolHeath.Migrations
             modelBuilder.Entity("SchoolHeath.Models.HealthCampaign", b =>
                 {
                     b.Navigation("HealthCheckSchedules");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.MedicationRequest", b =>
+                {
+                    b.Navigation("Medicines");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.MedicineInventory", b =>

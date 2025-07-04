@@ -61,7 +61,7 @@ namespace SchoolHeath.Controllers
                     var consent = new VaccinationConsent
                     {
                         StudentId = student.StudentId,
-                        ParentId = student.ParentId,
+                        ParentCccd = student.ParentCccd,
                         VaccineName = campaign.VaccineName,
                         CampaignId = campaign.CampaignId,
                         ConsentStatus = false,
@@ -109,7 +109,6 @@ namespace SchoolHeath.Controllers
             var consents = await _context.VaccinationConsents
                 .Where(c => c.CampaignId == id)
                 .Include(c => c.Student)
-                .Include(c => c.Parent)
                 .ToListAsync();
             return Ok(consents);
         }
@@ -188,16 +187,20 @@ namespace SchoolHeath.Controllers
 
             foreach (var record in records)
             {
-                var notification = new UserNotification
+                var parent = await _context.Parents.FirstOrDefaultAsync(p => p.Cccd == record.Student.ParentCccd);
+                if (parent != null)
                 {
-                    RecipientId = record.Student.ParentId,
-                    Title = $"Kết quả tiêm chủng của học sinh {record.Student.Name}",
-                    Message = $"Học sinh {record.Student.Name} đã hoàn thành tiêm {record.VaccineName} ngày {record.DateOfVaccination:dd/MM/yyyy}.",
-                    CreatedAt = DateTime.UtcNow,
-                    IsRead = false
-                    // Nếu đã thêm trường Type trong DB thì bổ sung: Type = "vaccination_result",
-                };
-                _context.UserNotifications.Add(notification);
+                    var notification = new UserNotification
+                    {
+                        RecipientId = parent.AccountId,
+                        Title = $"Kết quả tiêm chủng của học sinh {record.Student.Name}",
+                        Message = $"Học sinh {record.Student.Name} đã hoàn thành tiêm {record.VaccineName} ngày {record.DateOfVaccination:dd/MM/yyyy}.",
+                        CreatedAt = DateTime.UtcNow,
+                        IsRead = false
+                        // Nếu đã thêm trường Type trong DB thì bổ sung: Type = "vaccination_result",
+                    };
+                    _context.UserNotifications.Add(notification);
+                }
             }
             await _context.SaveChangesAsync();
             return Ok("Đã gửi phiếu thông báo kết quả tiêm cho phụ huynh.");
@@ -212,12 +215,12 @@ namespace SchoolHeath.Controllers
         [Authorize(Policy = "RequireParentRole")]
         public async Task<ActionResult<VaccinationConsent>> SubmitConfirmation([FromBody] VaccinationConsent confirmation)
         {
-            var parentIdClaim = User.FindFirst("ParentId");
-            if (parentIdClaim == null || !int.TryParse(parentIdClaim.Value, out int parentId))
+            var parentCccdClaim = User.FindFirst("ParentCccd");
+            if (parentCccdClaim == null || !int.TryParse(parentCccdClaim.Value, out int parentCccd))
                 return BadRequest("Unable to identify parent");
 
             var student = await _context.Students
-                .FirstOrDefaultAsync(s => s.StudentId == confirmation.StudentId && s.ParentId == parentId);
+                .FirstOrDefaultAsync(s => s.StudentId == confirmation.StudentId && s.ParentCccd == parentCccd.ToString());
 
             if (student == null)
                 return BadRequest("Student not found or does not belong to you");
@@ -226,7 +229,7 @@ namespace SchoolHeath.Controllers
             if (campaign == null)
                 return BadRequest("Campaign not found");
 
-            confirmation.ParentId = parentId;
+            confirmation.ParentCccd = parentCccd.ToString();
             confirmation.ConsentDate = DateTime.UtcNow;
             confirmation.Class = student.Class;
 

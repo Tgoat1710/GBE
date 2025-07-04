@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using SchoolHeath.Models;
-
+using SchoolHeath.Services;
 namespace SchoolHeath
 {
     public class Program
@@ -26,6 +26,8 @@ namespace SchoolHeath
             // Tùy chỉnh cấu hình Logging
             builder.Logging.AddConsole();
             builder.Logging.SetMinimumLevel(LogLevel.Information);
+
+            builder.Services.AddScoped<MedicalEventService>();
             
             // CORS configuration for development
             builder.Services.AddCors(options =>

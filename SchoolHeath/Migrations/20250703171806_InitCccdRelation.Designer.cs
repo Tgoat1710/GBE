@@ -12,8 +12,8 @@ using SchoolHeath.Models;
 namespace SchoolHeath.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250626134644_AddUsedSuppliesToMedicalEvent")]
-    partial class AddUsedSuppliesToMedicalEvent
+    [Migration("20250703171806_InitCccdRelation")]
+    partial class InitCccdRelation
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -67,6 +67,150 @@ namespace SchoolHeath.Migrations
                     b.HasKey("AccountId");
 
                     b.ToTable("Account", (string)null);
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.Attendance", b =>
+                {
+                    b.Property<int>("AttendanceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("attendance_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AttendanceId"));
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<bool>("IsPresent")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_present");
+
+                    b.Property<int>("ScheduleId")
+                        .HasColumnType("int")
+                        .HasColumnName("schedule_id");
+
+                    b.HasKey("AttendanceId");
+
+                    b.HasIndex("ScheduleId");
+
+                    b.ToTable("Attendance");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.HealthCampaign", b =>
+                {
+                    b.Property<int>("CampaignId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("campaign_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CampaignId"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.HasKey("CampaignId");
+
+                    b.ToTable("HealthCampaign");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.HealthCheckResult", b =>
+                {
+                    b.Property<int>("ResultId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("result_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ResultId"));
+
+                    b.Property<string>("BloodPressure")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("blood_pressure");
+
+                    b.Property<string>("Dental")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("dental");
+
+                    b.Property<string>("HeartRate")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("heart_rate");
+
+                    b.Property<float>("HeightCm")
+                        .HasColumnType("real")
+                        .HasColumnName("height_cm");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("notes");
+
+                    b.Property<int>("ScheduleId")
+                        .HasColumnType("int")
+                        .HasColumnName("schedule_id");
+
+                    b.Property<string>("Vision")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("vision");
+
+                    b.Property<float>("WeightKg")
+                        .HasColumnType("real")
+                        .HasColumnName("weight_kg");
+
+                    b.HasKey("ResultId");
+
+                    b.HasIndex("ScheduleId");
+
+                    b.ToTable("HealthCheckResult");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.HealthCheckSchedule", b =>
+                {
+                    b.Property<int>("ScheduleId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("schedule_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ScheduleId"));
+
+                    b.Property<int>("CampaignId")
+                        .HasColumnType("int")
+                        .HasColumnName("campaign_id");
+
+                    b.Property<DateTime>("ScheduledDate")
+                        .HasColumnType("date")
+                        .HasColumnName("scheduled_date");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int")
+                        .HasColumnName("student_id");
+
+                    b.HasKey("ScheduleId");
+
+                    b.HasIndex("CampaignId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("HealthCheckSchedule");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.HealthCheckup", b =>
@@ -264,30 +408,39 @@ namespace SchoolHeath.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequestId"));
 
-                    b.Property<string>("Dosage")
-                        .IsRequired()
+                    b.Property<DateTime?>("ActualAdministerTime")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("actual_administer_time");
+
+                    b.Property<string>("AdministerLocation")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
-                        .HasColumnName("dosage");
+                        .HasColumnName("administer_location");
 
-                    b.Property<string>("Duration")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("duration");
+                    b.Property<DateTime?>("AdministerTime")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("administer_time");
 
-                    b.Property<string>("Frequency")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("frequency");
-
-                    b.Property<int>("MedicineId")
-                        .HasColumnType("int")
-                        .HasColumnName("medicine_id");
+                    b.Property<int?>("MedicineInventoryMedicineId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("notes");
+
+                    b.Property<int?>("NurseId")
+                        .HasColumnType("int")
+                        .HasColumnName("nurse_id");
+
+                    b.Property<string>("PrescriptionImageUrl")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("prescription_image_url");
+
+                    b.Property<int?>("RemainingQuantity")
+                        .HasColumnType("int")
+                        .HasColumnName("remaining_quantity");
 
                     b.Property<DateTime>("RequestDate")
                         .HasColumnType("date")
@@ -309,13 +462,51 @@ namespace SchoolHeath.Migrations
 
                     b.HasKey("RequestId");
 
-                    b.HasIndex("MedicineId");
+                    b.HasIndex("MedicineInventoryMedicineId");
+
+                    b.HasIndex("NurseId");
 
                     b.HasIndex("RequestedBy");
 
                     b.HasIndex("StudentId");
 
                     b.ToTable("MedicationRequest");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.MedicationRequestItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Dosage")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Duration")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Frequency")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("MedicationRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MedicineId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MedicationRequestId");
+
+                    b.HasIndex("MedicineId");
+
+                    b.ToTable("MedicationRequestItem");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.MedicineInventory", b =>
@@ -350,6 +541,32 @@ namespace SchoolHeath.Migrations
                     b.HasIndex("NurseId");
 
                     b.ToTable("MedicineInventory");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.NurseAssignment", b =>
+                {
+                    b.Property<int>("AssignmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("assignment_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AssignmentId"));
+
+                    b.Property<int>("NurseId")
+                        .HasColumnType("int")
+                        .HasColumnName("nurse_id");
+
+                    b.Property<int>("ScheduleId")
+                        .HasColumnType("int")
+                        .HasColumnName("schedule_id");
+
+                    b.HasKey("AssignmentId");
+
+                    b.HasIndex("NurseId");
+
+                    b.HasIndex("ScheduleId");
+
+                    b.ToTable("NurseAssignment");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.Parent", b =>
@@ -467,9 +684,14 @@ namespace SchoolHeath.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("name");
 
-                    b.Property<int>("ParentId")
-                        .HasColumnType("int")
-                        .HasColumnName("parent_id");
+                    b.Property<string>("ParentCccd")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("parent_cccd");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("int");
 
                     b.Property<string>("School")
                         .HasMaxLength(100)
@@ -650,9 +872,14 @@ namespace SchoolHeath.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("notes");
 
-                    b.Property<int>("ParentId")
-                        .HasColumnType("int")
-                        .HasColumnName("parent_id");
+                    b.Property<string>("ParentCccd")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("parent_cccd");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("int");
 
                     b.Property<int>("StudentId")
                         .HasColumnType("int")
@@ -727,6 +954,47 @@ namespace SchoolHeath.Migrations
                     b.ToTable("VaccinationRecord");
                 });
 
+            modelBuilder.Entity("SchoolHeath.Models.Attendance", b =>
+                {
+                    b.HasOne("SchoolHeath.Models.HealthCheckSchedule", "Schedule")
+                        .WithMany()
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Schedule");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.HealthCheckResult", b =>
+                {
+                    b.HasOne("SchoolHeath.Models.HealthCheckSchedule", "Schedule")
+                        .WithMany()
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Schedule");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.HealthCheckSchedule", b =>
+                {
+                    b.HasOne("SchoolHeath.Models.HealthCampaign", "Campaign")
+                        .WithMany("HealthCheckSchedules")
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SchoolHeath.Models.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Campaign");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("SchoolHeath.Models.HealthCheckup", b =>
                 {
                     b.HasOne("SchoolHeath.Models.SchoolNurse", "Nurse")
@@ -785,11 +1053,13 @@ namespace SchoolHeath.Migrations
 
             modelBuilder.Entity("SchoolHeath.Models.MedicationRequest", b =>
                 {
-                    b.HasOne("SchoolHeath.Models.MedicineInventory", "Medicine")
+                    b.HasOne("SchoolHeath.Models.MedicineInventory", null)
                         .WithMany("MedicationRequests")
-                        .HasForeignKey("MedicineId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("MedicineInventoryMedicineId");
+
+                    b.HasOne("SchoolHeath.Models.SchoolNurse", "Nurse")
+                        .WithMany()
+                        .HasForeignKey("NurseId");
 
                     b.HasOne("SchoolHeath.Models.Account", "RequestedByNavigation")
                         .WithMany("MedicationRequests")
@@ -803,11 +1073,30 @@ namespace SchoolHeath.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Medicine");
+                    b.Navigation("Nurse");
 
                     b.Navigation("RequestedByNavigation");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.MedicationRequestItem", b =>
+                {
+                    b.HasOne("SchoolHeath.Models.MedicationRequest", "MedicationRequest")
+                        .WithMany("Medicines")
+                        .HasForeignKey("MedicationRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SchoolHeath.Models.MedicineInventory", "Medicine")
+                        .WithMany()
+                        .HasForeignKey("MedicineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MedicationRequest");
+
+                    b.Navigation("Medicine");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.MedicineInventory", b =>
@@ -817,6 +1106,25 @@ namespace SchoolHeath.Migrations
                         .HasForeignKey("NurseId");
 
                     b.Navigation("Nurse");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.NurseAssignment", b =>
+                {
+                    b.HasOne("SchoolHeath.Models.Account", "Nurse")
+                        .WithMany()
+                        .HasForeignKey("NurseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SchoolHeath.Models.HealthCheckSchedule", "Schedule")
+                        .WithMany()
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Nurse");
+
+                    b.Navigation("Schedule");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.Parent", b =>
@@ -843,13 +1151,9 @@ namespace SchoolHeath.Migrations
 
             modelBuilder.Entity("SchoolHeath.Models.Student", b =>
                 {
-                    b.HasOne("SchoolHeath.Models.Parent", "Parent")
+                    b.HasOne("SchoolHeath.Models.Parent", null)
                         .WithMany("Students")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Parent");
+                        .HasForeignKey("ParentId");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.UserNotification", b =>
@@ -888,11 +1192,9 @@ namespace SchoolHeath.Migrations
                         .WithMany()
                         .HasForeignKey("CampaignId");
 
-                    b.HasOne("SchoolHeath.Models.Parent", "Parent")
+                    b.HasOne("SchoolHeath.Models.Parent", null)
                         .WithMany("VaccinationConsents")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ParentId");
 
                     b.HasOne("SchoolHeath.Models.Student", "Student")
                         .WithMany("VaccinationConsents")
@@ -901,8 +1203,6 @@ namespace SchoolHeath.Migrations
                         .IsRequired();
 
                     b.Navigation("Campaign");
-
-                    b.Navigation("Parent");
 
                     b.Navigation("Student");
                 });
@@ -945,6 +1245,16 @@ namespace SchoolHeath.Migrations
                     b.Navigation("SchoolNurse");
 
                     b.Navigation("UserNotifications");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.HealthCampaign", b =>
+                {
+                    b.Navigation("HealthCheckSchedules");
+                });
+
+            modelBuilder.Entity("SchoolHeath.Models.MedicationRequest", b =>
+                {
+                    b.Navigation("Medicines");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.MedicineInventory", b =>
