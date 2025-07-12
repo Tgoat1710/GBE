@@ -82,7 +82,7 @@ namespace SchoolHeath.Controllers
 
                     var notification = new UserNotification
                     {
-                        RecipientId = student.Parent.AccountId,
+                        RecipientId = student.Parent != null ? student.Parent.AccountId : 0,
                         Title = $"Phiếu xác nhận tiêm chủng - {campaign.VaccineName}",
                         Message = $"Phiếu xác nhận tiêm chủng {campaign.VaccineName} cho học sinh {student.Name} lớp {student.Class}. Lịch tiêm: {campaign.ScheduleDate:dd/MM/yyyy}. Vui lòng xác nhận đồng ý hoặc không đồng ý tham gia.",
                         CreatedAt = DateTime.UtcNow,
@@ -174,13 +174,12 @@ namespace SchoolHeath.Controllers
 
             foreach (var record in records)
             {
-                // Đảm bảo Parent và AccountId không null
                 if (record.Student?.Parent?.AccountId == null)
                     continue;
 
                 var notification = new UserNotification
                 {
-                    RecipientId = record.Student.Parent.AccountId, // Sử dụng AccountId thay vì ParentId
+                    RecipientId = record.Student.Parent.AccountId,
                     Title = $"Kết quả tiêm chủng của học sinh {record.Student.Name}",
                     Message = $"Học sinh {record.Student.Name} đã hoàn thành tiêm {record.VaccineName} ngày {record.DateOfVaccination:dd/MM/yyyy}.",
                     CreatedAt = DateTime.UtcNow,

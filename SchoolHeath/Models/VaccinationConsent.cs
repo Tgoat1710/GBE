@@ -16,6 +16,10 @@ namespace SchoolHeath.Models
         public int StudentId { get; set; }
 
         [Required]
+        [Column("parent_id")]
+        public int ParentId { get; set; }
+
+        [Required]
         [MaxLength(20)]
         [Column("parent_cccd")]
         public string ParentCccd { get; set; } = null!;
@@ -47,6 +51,9 @@ namespace SchoolHeath.Models
 
         [ForeignKey("StudentId")]
         public virtual Student Student { get; set; } = null!;
+
+        [ForeignKey("ParentId")]
+        public virtual Parent Parent { get; set; } = null!;
 
         [ForeignKey("CampaignId")]
         public virtual VaccinationCampaign? Campaign { get; set; }

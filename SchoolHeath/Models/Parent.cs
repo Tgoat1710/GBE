@@ -33,8 +33,10 @@ namespace SchoolHeath.Models // Đồng bộ namespace với toàn project
         [ForeignKey("AccountId")]
         public virtual Account Account { get; set; } = null!;
 
+        // Navigation property for Student
         public virtual ICollection<Student> Students { get; set; } = new List<Student>();
 
+        // Navigation property for VaccinationConsent
         public virtual ICollection<VaccinationConsent> VaccinationConsents { get; set; } = new List<VaccinationConsent>();
     }
 }

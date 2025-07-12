@@ -35,9 +35,6 @@ namespace SchoolHeath.Models
         [Column("class")]
         public string Class { get; set; } = null!;
 
-        // ĐÃ BỎ property ClassName (chỉ dùng property Class để đồng bộ với DB và code)
-        // Nếu cần dùng tên lớp, chỉ dùng student.Class
-
         [MaxLength(100)]
         [Column("school")]
         public string? School { get; set; }
@@ -65,10 +62,14 @@ namespace SchoolHeath.Models
         [Column("status")]
         public string? Status { get; set; }
 
-        // Navigation properties
-        // [ForeignKey("ParentId")]
-        // public virtual Parent Parent { get; set; } = null!;
+        // Foreign key to Parent (assuming one student has one parent)
+        [ForeignKey("Parent")]
+        [Column("parent_id")]
+        public int ParentId { get; set; }
 
+        public virtual Parent? Parent { get; set; }
+
+        // Navigation properties
         public virtual ICollection<HealthCheckup> HealthCheckups { get; set; } = new List<HealthCheckup>();
 
         public virtual HealthRecord? HealthRecord { get; set; }
