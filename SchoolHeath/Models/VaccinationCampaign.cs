@@ -29,7 +29,7 @@ namespace SchoolHeath.Models
         [Column("status")]
         public string Status { get; set; } = "Planned"; // Planned, InProgress, Completed, Cancelled
 
-        // NEW: Lớp mục tiêu
+        // Lớp mục tiêu cho chiến dịch tiêm chủng
         [MaxLength(50)]
         [Column("target_class")]
         public string? TargetClass { get; set; }
