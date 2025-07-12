@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolHeath.Models;
 using SchoolHeath.Models.DTOs;
 using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace SchoolHeath.Controllers
 {
@@ -15,6 +16,11 @@ namespace SchoolHeath.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<AuthController> _logger;
+
+        // NÊN lấy từ cấu hình, chỉ để demo hardcode key ở đây
+        private const string JwtSecretKey = "BAN_HAY_DAT_CHUOI_BI_MAT_DAI_32_KY_TU_TRO_LEN_@2024";
+        private const string JwtIssuer = "SchoolHeathApp";
+        private const string JwtAudience = "SchoolHeathClient";
 
         public AuthController(ApplicationDbContext context, ILogger<AuthController> logger)
         {
@@ -54,24 +60,16 @@ namespace SchoolHeath.Controllers
                     return Unauthorized(new { message = "Tên đăng nhập, mật khẩu hoặc vai trò không đúng" });
                 }
 
-                _logger.LogDebug("Found account: {Username}, Role: {Role}", account.Username, account.Role);
-
                 bool passwordValid = false;
                 try
                 {
                     if (!string.IsNullOrEmpty(account.Password) && account.Password.StartsWith("$2")) // BCrypt hash
                     {
                         passwordValid = BCrypt.Net.BCrypt.Verify(dto.Password, account.Password);
-                        _logger.LogDebug("BCrypt verification result: {Result}", passwordValid);
                     }
                     else
                     {
                         passwordValid = dto.Password == account.Password;
-                        _logger.LogWarning("Plain text password comparison used: {Result}", passwordValid);
-                        if (!IsDevelopment())
-                        {
-                            _logger.LogCritical("SECURITY RISK: Plain text password comparison in production!");
-                        }
                     }
                 }
                 catch (Exception ex)
@@ -94,51 +92,88 @@ namespace SchoolHeath.Controllers
                     accountToUpdate.LastLogin = DateTime.Now;
                     if (!string.IsNullOrEmpty(accountToUpdate.Password) && !accountToUpdate.Password.StartsWith("$2"))
                     {
-                        _logger.LogInformation("Hashing plain text password for {Username} during login", account.Username);
                         accountToUpdate.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password);
                     }
                     await _context.SaveChangesAsync();
                 }
+
+                // CHUẨN HÓA ROLE
+                string normalizedRole = account.Role switch
+                {
+                    { } r when r.Equals("admin", StringComparison.OrdinalIgnoreCase) => "Admin",
+                    { } r when r.Equals("manager", StringComparison.OrdinalIgnoreCase) => "Manager",
+                    { } r when r.Equals("parent", StringComparison.OrdinalIgnoreCase) => "Parent",
+                    { } r when r.Equals("nurse", StringComparison.OrdinalIgnoreCase) => "Nurse",
+                    _ => account.Role
+                };
 
                 // Claims
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, account.Username),
                     new Claim(ClaimTypes.NameIdentifier, account.AccountId.ToString()),
-                    new Claim(ClaimTypes.Role, account.Role),
-                    new Claim("LastLogin", DateTime.Now.ToString("o"))
+                    new Claim(ClaimTypes.Role, normalizedRole),
+                    new Claim("LastLogin", DateTime.Now.ToString("o")),
+                    new Claim("AccountId", account.AccountId.ToString()) // THÊM DÒNG NÀY
                 };
 
-                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                var authProperties = new AuthenticationProperties
+                // Nếu là phụ huynh, gán thêm ParentId
+                if (normalizedRole == "Parent")
                 {
-                    AllowRefresh = true,
-                    IsPersistent = true,
-                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7)
-                };
+                    var parent = await _context.Parents
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(p => p.AccountId == account.AccountId);
 
-                await HttpContext.SignInAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    new ClaimsPrincipal(claimsIdentity),
-                    authProperties);
+                    if (parent != null)
+                    {
+                        claims.Add(new Claim("ParentId", parent.ParentId.ToString()));
+                    }
+                }
 
-                _logger.LogInformation("User {Username} logged in successfully with role {Role}", account.Username, account.Role);
+                // Nếu là nurse, gán thêm NurseId và trả về nurse_id cho FE
+                int? nurseId = null;
+                if (normalizedRole == "Nurse")
+                {
+                    var nurse = await _context.SchoolNurses
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(n => n.AccountId == account.AccountId);
+
+                    if (nurse != null)
+                    {
+                        nurseId = nurse.NurseId;
+                        claims.Add(new Claim("NurseId", nurse.NurseId.ToString()));
+                    }
+                }
+
+                // Tạo JWT access_token
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtSecretKey));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+                var token = new JwtSecurityToken(
+                    issuer: JwtIssuer,
+                    audience: JwtAudience,
+                    claims: claims,
+                    expires: DateTime.UtcNow.AddDays(7),
+                    signingCredentials: creds
+                );
+                var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
 
                 var user = new
                 {
                     id = account.AccountId,
                     username = account.Username,
-                    role = account.Role,
+                    role = normalizedRole,
                     createdAt = account.CreatedAt,
                     updatedAt = account.UpdatedAt,
-                    lastLogin = accountToUpdate?.LastLogin
+                    lastLogin = accountToUpdate?.LastLogin,
+                    nurse_id = nurseId // Trả về nurse_id nếu là y tá
                 };
 
                 return Ok(new
                 {
                     success = true,
                     message = "Đăng nhập thành công",
-                    user
+                    user,
+                    access_token = accessToken
                 });
             }
             catch (Exception ex)
@@ -150,23 +185,14 @@ namespace SchoolHeath.Controllers
 
         [HttpPost("logout")]
         [Authorize]
-        public async Task<IActionResult> Logout()
+        public IActionResult Logout()
         {
-            try
-            {
-                var username = User.Identity?.Name;
-                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                _logger.LogInformation("User {Username} logged out", username ?? "Unknown");
-                return Ok(new { success = true, message = "Đăng xuất thành công" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during logout");
-                return StatusCode(500, new { message = "Lỗi trong quá trình đăng xuất" });
-            }
+            // Với JWT logout, chỉ cần client xóa token là đủ, không cần xử lý server.
+            return Ok(new { success = true, message = "Đăng xuất thành công" });
         }
 
         [HttpGet("check")]
+        [Authorize]
         public IActionResult CheckAuth()
         {
             if (User.Identity?.IsAuthenticated == true)
@@ -179,7 +205,6 @@ namespace SchoolHeath.Controllers
                     role = User.FindFirst(ClaimTypes.Role)?.Value
                 });
             }
-
             return Unauthorized(new { isAuthenticated = false, message = "Chưa đăng nhập" });
         }
 
@@ -202,7 +227,6 @@ namespace SchoolHeath.Controllers
         public IActionResult TestRole(string role)
         {
             var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-
             if (userRole?.Equals(role, StringComparison.OrdinalIgnoreCase) == true)
             {
                 return Ok(new
@@ -213,11 +237,7 @@ namespace SchoolHeath.Controllers
                     userRole
                 });
             }
-
-            return Forbid(new AuthenticationProperties
-            {
-                RedirectUri = "/api/auth/access-denied"
-            });
+            return Forbid();
         }
 
         [HttpGet("debug/accounts")]
