@@ -31,9 +31,7 @@ namespace SchoolHeath.Controllers
                 .Include(s => s.Parent)
                 .FirstOrDefaultAsync(s => s.StudentId == studentId);
 
-            if (student == null) return NotFound();
-
-            return Ok(new
+            if (student == null) return NotFound();            return Ok(new
             {
                 Student = new
                 {
@@ -43,13 +41,17 @@ namespace SchoolHeath.Controllers
                     Dob = student.Dob,
                     student.Gender
                 },
-                Parent = student.Parent != null ? new
-                {
-                    student.Parent.ParentId,
-                    student.Parent.Name,
-                    student.Parent.Phone,
-                    student.Parent.Cccd
-                } : null
+                Parent = student.ParentId != null ? 
+                    await _context.Parents
+                        .Where(p => p.ParentId == student.ParentId)
+                        .Select(p => new
+                        {
+                            p.ParentId,
+                            p.Name,
+                            p.Phone,
+                            p.Cccd
+                        })
+                        .FirstOrDefaultAsync() : null
             });
         }
 
@@ -128,9 +130,7 @@ namespace SchoolHeath.Controllers
                 .ToListAsync();
 
             return Ok(events);
-        }
-
-        // 5. Notify parent về sự cố y tế của học sinh
+        }        // 5. Notify parent về sự cố y tế của học sinh
         [HttpPost("{id}/notify")]
         [Authorize(Policy = "RequireNurseRole")]
         public async Task<IActionResult> NotifyParent(int id, [FromBody] NotifyParentDto dto)
@@ -144,8 +144,14 @@ namespace SchoolHeath.Controllers
             if (incident == null)
                 return NotFound("Không tìm thấy sự cố y tế!");
 
-            // Tìm phụ huynh
-            var parent = incident.Student?.Parent;
+            // Tìm phụ huynh qua ParentId
+            Parent? parent = null;
+            if (incident.Student?.ParentId != null)
+            {
+                parent = await _context.Parents
+                    .FirstOrDefaultAsync(p => p.ParentId == incident.Student.ParentId);
+            }
+            
             if (parent == null)
                 return NotFound("Không tìm thấy phụ huynh!");
 

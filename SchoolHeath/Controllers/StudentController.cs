@@ -22,12 +22,15 @@ namespace SchoolHeath.Controllers
         {
             var students = await _context.Students.ToListAsync();
             return Ok(students);
-        }
-
-        // Tìm kiếm học sinh theo tên
+        }        // Tìm kiếm học sinh theo tên
         [HttpGet("search-by-name")]
         public async Task<IActionResult> SearchByName([FromQuery] string name)
         {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest(new { error = "Name parameter is required" });
+            }
+
             var students = await _context.Students
                 .Where(s => s.Name.Contains(name))
                 .ToListAsync();

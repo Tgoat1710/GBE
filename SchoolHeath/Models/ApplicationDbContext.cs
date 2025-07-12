@@ -41,8 +41,12 @@ namespace SchoolHeath.Models // Sửa lại cho đúng với project của bạn
                 entity.Property(e => e.Role).HasColumnName("role").IsRequired().HasMaxLength(20);
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-                entity.Property(e => e.LastLogin).HasColumnName("last_login");
-            });
+                entity.Property(e => e.LastLogin).HasColumnName("last_login");            });            // Cấu hình relationship Student-Parent qua ParentId
+            modelBuilder.Entity<Student>()
+                .HasOne(s => s.Parent)
+                .WithMany(p => p.Students)
+                .HasForeignKey(s => s.ParentId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // TODO: Mapping cho các entity khác nếu có (khóa ngoại, unique, ...)
         }

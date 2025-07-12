@@ -53,20 +53,19 @@ namespace SchoolHeath.Models
         public string? BloodType { get; set; }
 
         [Column("height")]
-        public double? Height { get; set; }
-
-        [Column("weight")]
+        public double? Height { get; set; }        [Column("weight")]
         public double? Weight { get; set; }
 
         [MaxLength(20)]
         [Column("status")]
         public string? Status { get; set; }
 
-        // Foreign key to Parent (assuming one student has one parent)
-        [ForeignKey("Parent")]
+        // ParentId foreign key
         [Column("parent_id")]
-        public int ParentId { get; set; }
+        public int? ParentId { get; set; }
 
+        // Navigation properties
+        [ForeignKey("ParentId")]
         public virtual Parent? Parent { get; set; }
 
         // Navigation properties

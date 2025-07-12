@@ -77,12 +77,15 @@ namespace SchoolHeath.Controllers
                         ConsentStatus = null,
                         ConsentDate = null,
                         Class = student.Class
-                    };
-                    _context.VaccinationConsents.Add(consent);
+                    };                    _context.VaccinationConsents.Add(consent);
 
+                    // Tìm parent để lấy AccountId
+                    var parent = student.ParentId != null ? 
+                        await _context.Parents.FirstOrDefaultAsync(p => p.ParentId == student.ParentId) : null;
+                    
                     var notification = new UserNotification
                     {
-                        RecipientId = student.Parent != null ? student.Parent.AccountId : 0,
+                        RecipientId = parent?.AccountId ?? 0,
                         Title = $"Phiếu xác nhận tiêm chủng - {campaign.VaccineName}",
                         Message = $"Phiếu xác nhận tiêm chủng {campaign.VaccineName} cho học sinh {student.Name} lớp {student.Class}. Lịch tiêm: {campaign.ScheduleDate:dd/MM/yyyy}. Vui lòng xác nhận đồng ý hoặc không đồng ý tham gia.",
                         CreatedAt = DateTime.UtcNow,
@@ -169,17 +172,20 @@ namespace SchoolHeath.Controllers
             var records = await _context.VaccinationRecords
                 .Where(r => r.CampaignId == id && r.Status == "Done")
                 .Include(r => r.Student)
-                    .ThenInclude(s => s.Parent)
-                .ToListAsync();
+                    .ThenInclude(s => s.Parent)                .ToListAsync();
 
             foreach (var record in records)
             {
-                if (record.Student?.Parent?.AccountId == null)
+                // Tìm parent qua ParentId
+                var parent = record.Student?.ParentId != null ? 
+                    await _context.Parents.FirstOrDefaultAsync(p => p.ParentId == record.Student.ParentId) : null;
+                
+                if (parent?.AccountId == null)
                     continue;
 
                 var notification = new UserNotification
                 {
-                    RecipientId = record.Student.Parent.AccountId,
+                    RecipientId = parent.AccountId,
                     Title = $"Kết quả tiêm chủng của học sinh {record.Student.Name}",
                     Message = $"Học sinh {record.Student.Name} đã hoàn thành tiêm {record.VaccineName} ngày {record.DateOfVaccination:dd/MM/yyyy}.",
                     CreatedAt = DateTime.UtcNow,

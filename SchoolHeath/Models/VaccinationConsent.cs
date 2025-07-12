@@ -9,15 +9,12 @@ namespace SchoolHeath.Models
     {
         [Key]
         [Column("consent_id")]
-        public int ConsentId { get; set; }
-
-        [Required]
+        public int ConsentId { get; set; }        [Required]
         [Column("student_id")]
         public int StudentId { get; set; }
 
-        [Required]
         [Column("parent_id")]
-        public int ParentId { get; set; }
+        public int? ParentId { get; set; }
 
         [Required]
         [MaxLength(20)]
