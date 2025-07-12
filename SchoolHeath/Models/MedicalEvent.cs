@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SchoolHeath.Models // Sửa lại namespace cho đồng bộ toàn project
 {
@@ -48,6 +49,7 @@ namespace SchoolHeath.Models // Sửa lại namespace cho đồng bộ toàn pro
         public virtual Account? HandledByNavigation { get; set; }
 
         [ForeignKey("StudentId")]
+        [JsonIgnore]
         public virtual Student Student { get; set; } = null!;
     }
 }
