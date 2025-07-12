@@ -35,7 +35,10 @@ namespace SchoolHeath.Models
         [Column("class")]
         public string Class { get; set; } = null!;
 
-        [MaxLength(100)]
+        // ĐÃ BỎ property ClassName (chỉ dùng property Class để đồng bộ với DB và code)
+        // Nếu cần dùng tên lớp, chỉ dùng student.Class
+
+        [MaxLength(100)]
         [Column("school")]
         public string? School { get; set; }
 
@@ -44,31 +47,27 @@ namespace SchoolHeath.Models
         public string? Address { get; set; }
 
         [Required]
-        [MaxLength(20)]
-        [Column("parent_cccd")]
-        public string ParentCccd { get; set; } = null!;
+        [Column("parent_id")]
+        public int ParentId { get; set; }
 
         [MaxLength(5)]
         [Column("blood_type")]
         public string? BloodType { get; set; }
 
         [Column("height")]
-        public double? Height { get; set; }        [Column("weight")]
+        public double? Height { get; set; }
+
+        [Column("weight")]
         public double? Weight { get; set; }
 
         [MaxLength(20)]
         [Column("status")]
         public string? Status { get; set; }
 
-        // ParentId foreign key
-        [Column("parent_id")]
-        public int? ParentId { get; set; }
+        // Navigation properties
+        [ForeignKey("ParentId")]
+        public virtual Parent Parent { get; set; } = null!;
 
-        // Navigation properties
-        [ForeignKey("ParentId")]
-        public virtual Parent? Parent { get; set; }
-
-        // Navigation properties
         public virtual ICollection<HealthCheckup> HealthCheckups { get; set; } = new List<HealthCheckup>();
 
         public virtual HealthRecord? HealthRecord { get; set; }

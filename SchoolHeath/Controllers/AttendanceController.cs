@@ -78,8 +78,7 @@ namespace SchoolHeath.Controllers
                 {
                     throw;
                 }
-            }
-            return NoContent();
+            }            return NoContent();
         }
     }
 }

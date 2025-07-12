@@ -36,7 +36,7 @@ namespace SchoolHeath.Services
             // 3. Gửi thông báo cho phụ huynh
             var student = await _context.Students.FirstOrDefaultAsync(s => s.StudentId == incident.StudentId);
             if (student == null) return null;
-            var parent = await _context.Parents.FirstOrDefaultAsync(p => p.Cccd == student.ParentCccd);
+            var parent = await _context.Parents.FirstOrDefaultAsync(p => p.ParentId == student.ParentId);
             if (parent != null)
             {
                 var notification = new UserNotification
