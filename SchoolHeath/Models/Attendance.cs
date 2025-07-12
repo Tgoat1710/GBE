@@ -12,8 +12,16 @@ namespace SchoolHeath.Models
         public int AttendanceId { get; set; }
 
         [Required]
-        [Column("schedule_id")]
-        public int ScheduleId { get; set; }
+        [Column("campaign_id")]
+        public int CampaignId { get; set; }
+
+        [Required]
+        [Column("student_id")]
+        public int StudentId { get; set; }
+
+        [Required]
+        [Column("nurse_id")]
+        public int NurseId { get; set; }
 
         [Required]
         [Column("date", TypeName = "date")]
@@ -24,7 +32,13 @@ namespace SchoolHeath.Models
         public bool IsPresent { get; set; }
 
         // Navigation properties
-        [ForeignKey("ScheduleId")]
-        public virtual HealthCheckSchedule Schedule { get; set; } = null!;
+        [ForeignKey("CampaignId")]
+        public virtual VaccinationCampaign Campaign { get; set; } = null!;
+
+        [ForeignKey("StudentId")]
+        public virtual Student Student { get; set; } = null!;
+
+        [ForeignKey("NurseId")]
+        public virtual SchoolNurse Nurse { get; set; } = null!;
     }
-} 
+}
