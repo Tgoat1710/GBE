@@ -24,13 +24,13 @@ namespace SchoolHeath.Models
         [Column("vaccine_name")]
         public string VaccineName { get; set; } = null!;
 
-        [Required]
+        // Cho phép nullable: null = chưa xác nhận, true/false = đã xác nhận
         [Column("consent_status")]
-        public bool ConsentStatus { get; set; }
+        public bool? ConsentStatus { get; set; }
 
-        [Required]
+        // Cho phép nullable: null = chưa xác nhận
         [Column("consent_date", TypeName = "date")]
-        public DateTime ConsentDate { get; set; }
+        public DateTime? ConsentDate { get; set; }
 
         [MaxLength(255)]
         [Column("notes")]
@@ -39,7 +39,7 @@ namespace SchoolHeath.Models
         [Column("campaign_id")]
         public int? CampaignId { get; set; }
 
-        // Sửa: đồng bộ tên trường với database, dùng "class" chứ không phải "class_name"
+        // Đồng bộ tên trường với database
         [MaxLength(50)]
         [Column("class")]
         public string? Class { get; set; }
