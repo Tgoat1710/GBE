@@ -23,8 +23,9 @@ namespace SchoolHeath.Controllers
         public async Task<ActionResult<IEnumerable<Attendance>>> GetAttendances()
         {
             return await _context.Attendances
-                .Include(a => a.Schedule)
-                .ThenInclude(s => s.Student)
+                .Include(a => a.Student)
+                .Include(a => a.Campaign)
+                .Include(a => a.Nurse)
                 .ToListAsync();
         }
 
@@ -33,8 +34,9 @@ namespace SchoolHeath.Controllers
         public async Task<ActionResult<Attendance>> GetAttendance(int id)
         {
             var attendance = await _context.Attendances
-                .Include(a => a.Schedule)
-                .ThenInclude(s => s.Student)
+                .Include(a => a.Student)
+                .Include(a => a.Campaign)
+                .Include(a => a.Nurse)
                 .FirstOrDefaultAsync(a => a.AttendanceId == id);
             if (attendance == null)
             {
@@ -79,4 +81,4 @@ namespace SchoolHeath.Controllers
             return NoContent();
         }
     }
-} 
+}
