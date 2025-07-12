@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SchoolHeath.Models // Đồng bộ namespace với toàn project
+namespace SchoolHeath.Models
 {
     [Table("VaccinationRecord")]
     public partial class VaccinationRecord
@@ -12,41 +12,38 @@ namespace SchoolHeath.Models // Đồng bộ namespace với toàn project
         public int VaccinationId { get; set; }
 
         [Required]
+        [Column("campaign_id")]
+        public int CampaignId { get; set; }
+
+        [Required]
         [Column("student_id")]
         public int StudentId { get; set; }
 
         [Required]
-        [MaxLength(100)]
         [Column("vaccine_name")]
         public string VaccineName { get; set; } = null!;
 
         [Required]
-        [Column("date_of_vaccination", TypeName = "date")]
-        public DateTime DateOfVaccination { get; set; } // Dùng DateTime thay DateOnly để tương thích EF & SQL Server
+        [Column("status")]
+        public string Status { get; set; } = null!; // "Pending", "Done", "Absent"
 
-        [Required]
+        [Column("date_of_vaccination")]
+        public DateTime? DateOfVaccination { get; set; }
+
+        [Column("follow_up_reminder")]
+        public DateTime? FollowUpReminder { get; set; }
+
         [Column("administered_by")]
-        public int AdministeredBy { get; set; }
+        public int? AdministeredBy { get; set; }
 
-        [Column("follow_up_reminder", TypeName = "date")]
-        public DateTime? FollowUpReminder { get; set; } // Dùng DateTime? thay DateOnly? để tương thích EF & SQL Server
-
-        [Column("campaign_id")]
-        public int? CampaignId { get; set; }
-
-        [ForeignKey("AdministeredBy")]
-        public virtual SchoolNurse AdministeredByNavigation { get; set; } = null!;
+        // Navigation properties
+        [ForeignKey("CampaignId")]
+        public virtual VaccinationCampaign Campaign { get; set; } = null!;
 
         [ForeignKey("StudentId")]
         public virtual Student Student { get; set; } = null!;
 
-        [ForeignKey("CampaignId")]
-        public virtual VaccinationCampaign? Campaign { get; set; }
-
-        // BỔ SUNG THUỘC TÍNH NÀY
-        [Required]
-        [MaxLength(20)]
-        [Column("status")]
-        public string Status { get; set; } = string.Empty;
+        [ForeignKey("AdministeredBy")]
+        public virtual SchoolNurse? AdministeredByNavigation { get; set; }
     }
 }
