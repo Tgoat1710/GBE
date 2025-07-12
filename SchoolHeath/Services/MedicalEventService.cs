@@ -34,12 +34,14 @@ namespace SchoolHeath.Services
             }
 
             // 3. Gửi thông báo cho phụ huynh
-            var student = await _context.Students.Include(s => s.Parent).FirstOrDefaultAsync(s => s.StudentId == incident.StudentId);
-            if (student?.Parent != null)
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.StudentId == incident.StudentId);
+            if (student == null) return null;
+            var parent = await _context.Parents.FirstOrDefaultAsync(p => p.Cccd == student.ParentCccd);
+            if (parent != null)
             {
                 var notification = new UserNotification
                 {
-                    RecipientId = student.Parent.AccountId,
+                    RecipientId = parent.AccountId,
                     Title = $"Sự cố y tế của học sinh {student.Name}",
                     Message = $"Học sinh {student.Name} gặp sự cố: {incident.EventType} lúc {incident.EventDate:HH:mm dd/MM/yyyy}. Đã sử dụng: {incident.UsedSupplies ?? "Không rõ"}. Ghi chú: {incident.Notes}",
                     CreatedAt = DateTime.UtcNow,

@@ -16,8 +16,9 @@ namespace SchoolHeath.Models
         public int StudentId { get; set; }
 
         [Required]
-        [Column("parent_id")]
-        public int ParentId { get; set; }
+        [MaxLength(20)]
+        [Column("parent_cccd")]
+        public string ParentCccd { get; set; } = null!;
 
         [Required]
         [MaxLength(100)]
@@ -43,9 +44,6 @@ namespace SchoolHeath.Models
         [MaxLength(50)]
         [Column("class")]
         public string? Class { get; set; }
-
-        [ForeignKey("ParentId")]
-        public virtual Parent Parent { get; set; } = null!;
 
         [ForeignKey("StudentId")]
         public virtual Student Student { get; set; } = null!;

@@ -506,6 +506,42 @@ namespace SchoolHeath.Migrations
                     b.ToTable("MedicationRequestItem", (string)null);
                 });
 
+            modelBuilder.Entity("SchoolHeath.Models.MedicationRequestItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Dosage")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Duration")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Frequency")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("MedicationRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MedicineId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MedicationRequestId");
+
+                    b.HasIndex("MedicineId");
+
+                    b.ToTable("MedicationRequestItem");
+                });
+
             modelBuilder.Entity("SchoolHeath.Models.MedicineInventory", b =>
                 {
                     b.Property<int>("MedicineId")
@@ -681,9 +717,14 @@ namespace SchoolHeath.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("name");
 
-                    b.Property<int>("ParentId")
-                        .HasColumnType("int")
-                        .HasColumnName("parent_id");
+                    b.Property<string>("ParentCccd")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("parent_cccd");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("int");
 
                     b.Property<string>("School")
                         .HasMaxLength(100)
@@ -864,9 +905,14 @@ namespace SchoolHeath.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("notes");
 
-                    b.Property<int>("ParentId")
-                        .HasColumnType("int")
-                        .HasColumnName("parent_id");
+                    b.Property<string>("ParentCccd")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("parent_cccd");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("int");
 
                     b.Property<int>("StudentId")
                         .HasColumnType("int")
@@ -1138,13 +1184,9 @@ namespace SchoolHeath.Migrations
 
             modelBuilder.Entity("SchoolHeath.Models.Student", b =>
                 {
-                    b.HasOne("SchoolHeath.Models.Parent", "Parent")
+                    b.HasOne("SchoolHeath.Models.Parent", null)
                         .WithMany("Students")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Parent");
+                        .HasForeignKey("ParentId");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.UserNotification", b =>
@@ -1183,11 +1225,9 @@ namespace SchoolHeath.Migrations
                         .WithMany()
                         .HasForeignKey("CampaignId");
 
-                    b.HasOne("SchoolHeath.Models.Parent", "Parent")
+                    b.HasOne("SchoolHeath.Models.Parent", null)
                         .WithMany("VaccinationConsents")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ParentId");
 
                     b.HasOne("SchoolHeath.Models.Student", "Student")
                         .WithMany("VaccinationConsents")
@@ -1196,8 +1236,6 @@ namespace SchoolHeath.Migrations
                         .IsRequired();
 
                     b.Navigation("Campaign");
-
-                    b.Navigation("Parent");
 
                     b.Navigation("Student");
                 });
