@@ -18,6 +18,19 @@ namespace SchoolHeath.Controllers
             _context = context;
         }
 
+        // GET: api/Notification?recipientId=123
+        // Lấy tất cả thông báo của một user (phụ huynh)
+        [HttpGet]
+        public async Task<IActionResult> GetNotifications([FromQuery] int recipientId)
+        {
+            var notifications = await _context.UserNotifications
+                .Where(n => n.RecipientId == recipientId)
+                .OrderByDescending(n => n.CreatedAt)
+                .ToListAsync();
+
+            return Ok(notifications);
+        }
+
         // POST: api/Notification/notify-results-to-parent
         [HttpPost("notify-results-to-parent")]
         public async Task<IActionResult> NotifyResultsToParent([FromBody] int scheduleId)
@@ -102,4 +115,4 @@ namespace SchoolHeath.Controllers
             return Ok(report);
         }
     }
-} 
+}
