@@ -19,11 +19,11 @@ namespace SchoolHeath.Models
         [Column("nurse_id")]
         public int NurseId { get; set; }
 
-        // Ng�y giao nhi?m v?
+        // Ngày giao nhiệm vụ
         [Column("assigned_date", TypeName = "date")]
         public DateTime AssignedDate { get; set; } = DateTime.UtcNow;
 
-        // Ghi ch� b? sung
+        // Ghi chú bổ sung
         [MaxLength(255)]
         [Column("notes")]
         public string? Notes { get; set; }
