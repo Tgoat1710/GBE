@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SchoolHeath.Models;
 
@@ -11,9 +12,11 @@ using SchoolHeath.Models;
 namespace SchoolHeath.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250703182409_UpdateStudentParentId")]
+    partial class UpdateStudentParentId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -91,7 +94,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("ScheduleId");
 
-                    b.ToTable("Attendance", (string)null);
+                    b.ToTable("Attendance");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.HealthCampaign", b =>
@@ -124,7 +127,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasKey("CampaignId");
 
-                    b.ToTable("HealthCampaign", (string)null);
+                    b.ToTable("HealthCampaign");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.HealthCheckResult", b =>
@@ -177,7 +180,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("ScheduleId");
 
-                    b.ToTable("HealthCheckResult", (string)null);
+                    b.ToTable("HealthCheckResult");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.HealthCheckSchedule", b =>
@@ -207,7 +210,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("HealthCheckSchedule", (string)null);
+                    b.ToTable("HealthCheckSchedule");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.HealthCheckup", b =>
@@ -260,7 +263,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("HealthCheckup", (string)null);
+                    b.ToTable("HealthCheckup");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.HealthRecord", b =>
@@ -305,7 +308,7 @@ namespace SchoolHeath.Migrations
                     b.HasIndex("StudentId")
                         .IsUnique();
 
-                    b.ToTable("HealthRecord", (string)null);
+                    b.ToTable("HealthRecord");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.Manager", b =>
@@ -337,7 +340,7 @@ namespace SchoolHeath.Migrations
                     b.HasIndex("AccountId")
                         .IsUnique();
 
-                    b.ToTable("Manager", (string)null);
+                    b.ToTable("Manager");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.MedicalEvent", b =>
@@ -393,7 +396,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("MedicalEvent", (string)null);
+                    b.ToTable("MedicalEvent");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.MedicationRequest", b =>
@@ -467,7 +470,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("MedicationRequest", (string)null);
+                    b.ToTable("MedicationRequest");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.MedicationRequestItem", b =>
@@ -503,7 +506,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("MedicineId");
 
-                    b.ToTable("MedicationRequestItem", (string)null);
+                    b.ToTable("MedicationRequestItem");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.MedicineInventory", b =>
@@ -537,7 +540,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("NurseId");
 
-                    b.ToTable("MedicineInventory", (string)null);
+                    b.ToTable("MedicineInventory");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.NurseAssignment", b =>
@@ -563,7 +566,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("ScheduleId");
 
-                    b.ToTable("NurseAssignment", (string)null);
+                    b.ToTable("NurseAssignment");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.Parent", b =>
@@ -601,7 +604,7 @@ namespace SchoolHeath.Migrations
                     b.HasIndex("AccountId")
                         .IsUnique();
 
-                    b.ToTable("Parent", (string)null);
+                    b.ToTable("Parent");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.SchoolNurse", b =>
@@ -633,7 +636,7 @@ namespace SchoolHeath.Migrations
                     b.HasIndex("AccountId")
                         .IsUnique();
 
-                    b.ToTable("SchoolNurse", (string)null);
+                    b.ToTable("SchoolNurse");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.Student", b =>
@@ -708,7 +711,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("ParentId");
 
-                    b.ToTable("Student", (string)null);
+                    b.ToTable("Student");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.UserNotification", b =>
@@ -754,7 +757,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("RecipientId");
 
-                    b.ToTable("UserNotification", (string)null);
+                    b.ToTable("UserNotification");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.VaccinationAssignment", b =>
@@ -789,7 +792,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("NurseId");
 
-                    b.ToTable("VaccinationAssignment", (string)null);
+                    b.ToTable("VaccinationAssignment");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.VaccinationCampaign", b =>
@@ -830,7 +833,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasKey("CampaignId");
 
-                    b.ToTable("VaccinationCampaign", (string)null);
+                    b.ToTable("VaccinationCampaign");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.VaccinationConsent", b =>
@@ -886,7 +889,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("VaccinationConsent", (string)null);
+                    b.ToTable("VaccinationConsent");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.VaccinationRecord", b =>
@@ -938,7 +941,7 @@ namespace SchoolHeath.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("VaccinationRecord", (string)null);
+                    b.ToTable("VaccinationRecord");
                 });
 
             modelBuilder.Entity("SchoolHeath.Models.Attendance", b =>
