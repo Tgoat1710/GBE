@@ -2,9 +2,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolHeath.Models;
+using SchoolHeath.Models.Dtos;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace SchoolHeath.Controllers
@@ -22,11 +24,23 @@ namespace SchoolHeath.Controllers
             _logger = logger;
         }
 
-        // --- MANAGER ---
+        // === MANAGER APIs ===
 
-        /// <summary>
-        /// Manager: Create a vaccination campaign
-        /// </summary>
+        [HttpGet("school-nurse")]
+        [Authorize(Policy = "RequireManagerRole")]
+        public async Task<ActionResult<IEnumerable<object>>> GetSchoolNurses()
+        {
+            var nurses = await _context.SchoolNurses
+                .Select(n => new {
+                    n.NurseId,
+                    n.AccountId,
+                    n.Name,
+                    n.Phone
+                }).ToListAsync();
+
+            return Ok(nurses);
+        }
+
         [HttpPost("campaigns")]
         [Authorize(Policy = "RequireManagerRole")]
         public async Task<ActionResult<VaccinationCampaign>> CreateCampaign([FromBody] VaccinationCampaign campaign)
@@ -36,24 +50,20 @@ namespace SchoolHeath.Controllers
             return CreatedAtAction(nameof(GetCampaign), new { id = campaign.CampaignId }, campaign);
         }
 
-        /// <summary>
-        /// Manager: Send consent forms to parents for a campaign (auto-create consent records for students in target class)
-        /// </summary>
         [HttpPost("campaigns/{id}/send-consent-forms")]
         [Authorize(Policy = "RequireManagerRole")]
         public async Task<ActionResult> SendConsentForms(int id)
         {
             var campaign = await _context.VaccinationCampaigns.FindAsync(id);
-            if (campaign == null) return NotFound("Campaign not found");
+            if (campaign == null) return NotFound(new { error = "Campaign not found" });
 
-            // Select students in target class
             var students = await _context.Students
                 .Where(s => s.Class == campaign.TargetClass)
+                .Include(s => s.Parent)
                 .ToListAsync();
 
             foreach (var student in students)
             {
-                // Only create consent if not already exists
                 var exists = await _context.VaccinationConsents
                     .AnyAsync(c => c.CampaignId == campaign.CampaignId && c.StudentId == student.StudentId);
                 if (!exists)
@@ -64,82 +74,30 @@ namespace SchoolHeath.Controllers
                         ParentId = student.ParentId,
                         VaccineName = campaign.VaccineName,
                         CampaignId = campaign.CampaignId,
-                        ConsentStatus = false,
-                        ConsentDate = DateTime.UtcNow,
+                        ConsentStatus = null,
+                        ConsentDate = null,
                         Class = student.Class
                     };
                     _context.VaccinationConsents.Add(consent);
-                    // TODO: Gửi thông báo/email cho phụ huynh nếu có hệ thống notification/email
+
+                    var notification = new UserNotification
+                    {
+                        RecipientId = student.Parent.AccountId,
+                        Title = $"Phiếu xác nhận tiêm chủng - {campaign.VaccineName}",
+                        Message = $"Phiếu xác nhận tiêm chủng {campaign.VaccineName} cho học sinh {student.Name} lớp {student.Class}. Lịch tiêm: {campaign.ScheduleDate:dd/MM/yyyy}. Vui lòng xác nhận đồng ý hoặc không đồng ý tham gia.",
+                        CreatedAt = DateTime.UtcNow,
+                        IsRead = false,
+                        Type = "vaccination_consent"
+                    };
+                    _context.UserNotifications.Add(notification);
                 }
             }
             await _context.SaveChangesAsync();
-            return Ok("Đã gửi phiếu xác nhận tới phụ huynh các học sinh lớp mục tiêu.");
+            return Ok(new { message = "Đã gửi phiếu xác nhận tới phụ huynh các học sinh lớp mục tiêu." });
         }
 
-        /// <summary>
-        /// Manager: Get all campaigns
-        /// </summary>
-        [HttpGet("campaigns")]
-        [Authorize(Policy = "RequireManagerRole")]
-        public async Task<ActionResult<IEnumerable<VaccinationCampaign>>> GetCampaigns()
-        {
-            var campaigns = await _context.VaccinationCampaigns.ToListAsync();
-            return Ok(campaigns);
-        }
-
-        /// <summary>
-        /// Manager: Get a campaign by id
-        /// </summary>
-        [HttpGet("campaigns/{id}")]
-        [Authorize(Policy = "RequireManagerRole")]
-        public async Task<ActionResult<VaccinationCampaign>> GetCampaign(int id)
-        {
-            var campaign = await _context.VaccinationCampaigns.FindAsync(id);
-            if (campaign == null) return NotFound();
-            return Ok(campaign);
-        }
-
-        /// <summary>
-        /// Manager: Get all confirmations for a campaign
-        /// </summary>
-        [HttpGet("campaigns/{id}/confirmations")]
-        [Authorize(Policy = "RequireManagerRole")]
-        public async Task<ActionResult<IEnumerable<VaccinationConsent>>> GetConfirmations(int id)
-        {
-            var consents = await _context.VaccinationConsents
-                .Where(c => c.CampaignId == id)
-                .Include(c => c.Student)
-                .Include(c => c.Parent)
-                .ToListAsync();
-            return Ok(consents);
-        }
-
-        /// <summary>
-        /// Manager: Assign nurse to campaign
-        /// </summary>
-        [HttpPost("campaigns/{id}/assign-nurse")]
-        [Authorize(Policy = "RequireManagerRole")]
-        public async Task<ActionResult<VaccinationAssignment>> AssignNurse(int id, [FromBody] VaccinationAssignment assignment)
-        {
-            var campaign = await _context.VaccinationCampaigns.FindAsync(id);
-            if (campaign == null) return NotFound("Campaign not found");
-
-            var nurse = await _context.SchoolNurses.FindAsync(assignment.NurseId);
-            if (nurse == null) return BadRequest("Nurse not found");
-
-            assignment.CampaignId = id;
-            assignment.AssignedDate = DateTime.UtcNow;
-            _context.VaccinationAssignments.Add(assignment);
-            await _context.SaveChangesAsync();
-
-            return Ok(assignment);
-        }
-
-        /// <summary>
-        /// Manager: Get students who agreed to vaccinate in a campaign
-        /// </summary>
         [HttpGet("campaigns/{id}/agreed-students")]
-        [Authorize(Policy = "RequireManagerRole")]
+        [Authorize(Policy = "RequireNurseOrManagerRole")]
         public async Task<ActionResult<IEnumerable<object>>> GetAgreedStudents(int id)
         {
             var agreed = await _context.VaccinationConsents
@@ -159,24 +117,51 @@ namespace SchoolHeath.Controllers
             return Ok(data);
         }
 
-        /// <summary>
-        /// Manager: Get results for a campaign
-        /// </summary>
+        [HttpPost("campaigns/{id}/assign-nurse")]
+        [Authorize(Policy = "RequireManagerRole")]
+        public async Task<ActionResult<VaccinationAssignment>> AssignNurse(int id, [FromBody] VaccinationAssignmentDto dto)
+        {
+            var campaign = await _context.VaccinationCampaigns.FindAsync(id);
+            if (campaign == null) return NotFound(new { error = "Campaign not found" });
+
+            var nurse = await _context.SchoolNurses.FindAsync(dto.NurseId);
+            if (nurse == null) return BadRequest(new { error = "Nurse not found" });
+
+            var assignment = new VaccinationAssignment
+            {
+                CampaignId = id,
+                NurseId = dto.NurseId,
+                AssignedDate = DateTime.UtcNow
+            };
+            _context.VaccinationAssignments.Add(assignment);
+            await _context.SaveChangesAsync();
+
+            return Ok(assignment);
+        }
+
         [HttpGet("campaigns/{id}/results")]
         [Authorize(Policy = "RequireManagerRole")]
-        public async Task<ActionResult<IEnumerable<VaccinationRecord>>> GetResults(int id)
+        public async Task<ActionResult<IEnumerable<VaccinationResultDto>>> GetResults(int id)
         {
             var results = await _context.VaccinationRecords
                 .Where(r => r.CampaignId == id)
                 .Include(r => r.Student)
-                .Include(r => r.AdministeredByNavigation)
+                .Select(r => new VaccinationResultDto
+                {
+                    VaccinationId = r.VaccinationId,
+                    CampaignId = r.CampaignId,
+                    StudentId = r.StudentId,
+                    StudentName = r.Student.Name,
+                    VaccineName = r.VaccineName,
+                    Status = r.Status,
+                    DateOfVaccination = r.DateOfVaccination,
+                    AdministeredBy = r.AdministeredBy
+                })
                 .ToListAsync();
+
             return Ok(results);
         }
 
-        /// <summary>
-        /// Manager: Notify parents of vaccination results (for all students Done in campaign)
-        /// </summary>
         [HttpPost("campaigns/{id}/notify-parents")]
         [Authorize(Policy = "RequireManagerRole")]
         public async Task<ActionResult> NotifyParents(int id)
@@ -184,69 +169,215 @@ namespace SchoolHeath.Controllers
             var records = await _context.VaccinationRecords
                 .Where(r => r.CampaignId == id && r.Status == "Done")
                 .Include(r => r.Student)
+                    .ThenInclude(s => s.Parent)
                 .ToListAsync();
 
             foreach (var record in records)
             {
+                // Đảm bảo Parent và AccountId không null
+                if (record.Student?.Parent?.AccountId == null)
+                    continue;
+
                 var notification = new UserNotification
                 {
-                    RecipientId = record.Student.ParentId,
+                    RecipientId = record.Student.Parent.AccountId, // Sử dụng AccountId thay vì ParentId
                     Title = $"Kết quả tiêm chủng của học sinh {record.Student.Name}",
                     Message = $"Học sinh {record.Student.Name} đã hoàn thành tiêm {record.VaccineName} ngày {record.DateOfVaccination:dd/MM/yyyy}.",
                     CreatedAt = DateTime.UtcNow,
-                    IsRead = false
-                    // Nếu đã thêm trường Type trong DB thì bổ sung: Type = "vaccination_result",
+                    IsRead = false,
+                    Type = "vaccination_result"
                 };
                 _context.UserNotifications.Add(notification);
             }
             await _context.SaveChangesAsync();
-            return Ok("Đã gửi phiếu thông báo kết quả tiêm cho phụ huynh.");
+            return Ok(new { message = "Đã gửi phiếu thông báo kết quả tiêm cho phụ huynh." });
         }
 
-        // --- PARENT ---
-
-        /// <summary>
-        /// Parent: Submit vaccination confirmation
-        /// </summary>
-        [HttpPost("confirmations")]
-        [Authorize(Policy = "RequireParentRole")]
-        public async Task<ActionResult<VaccinationConsent>> SubmitConfirmation([FromBody] VaccinationConsent confirmation)
+        [HttpGet("campaigns/{id}")]
+        [Authorize(Policy = "RequireManagerRole")]
+        public async Task<ActionResult<VaccinationCampaign>> GetCampaign(int id)
         {
-            var parentIdClaim = User.FindFirst("ParentId");
-            if (parentIdClaim == null || !int.TryParse(parentIdClaim.Value, out int parentId))
-                return BadRequest("Unable to identify parent");
-
-            var student = await _context.Students
-                .FirstOrDefaultAsync(s => s.StudentId == confirmation.StudentId && s.ParentId == parentId);
-
-            if (student == null)
-                return BadRequest("Student not found or does not belong to you");
-
-            var campaign = await _context.VaccinationCampaigns.FindAsync(confirmation.CampaignId);
-            if (campaign == null)
-                return BadRequest("Campaign not found");
-
-            confirmation.ParentId = parentId;
-            confirmation.ConsentDate = DateTime.UtcNow;
-            confirmation.Class = student.Class;
-
-            _context.VaccinationConsents.Add(confirmation);
-            await _context.SaveChangesAsync();
-
-            return Ok(confirmation);
+            var campaign = await _context.VaccinationCampaigns.FindAsync(id);
+            if (campaign == null) return NotFound();
+            return Ok(campaign);
         }
 
-        // --- NURSE ---
+        [HttpGet("campaigns/{id}/consents")]
+        [Authorize(Policy = "RequireManagerRole")]
+        public async Task<ActionResult<IEnumerable<object>>> GetCampaignConsents(int id)
+        {
+            var campaign = await _context.VaccinationCampaigns.FindAsync(id);
+            if (campaign == null)
+                return NotFound(new { error = "Campaign not found" });
 
-        /// <summary>
-        /// Nurse: Mark attendance for a campaign (bulk for multiple students)
-        /// </summary>
+            var students = await _context.Students
+                .Where(s => s.Class == campaign.TargetClass)
+                .Include(s => s.Parent)
+                .ToListAsync();
+
+            var consents = await _context.VaccinationConsents
+                .Where(c => c.CampaignId == id)
+                .ToListAsync();
+
+            var consentDict = consents.ToDictionary(c => c.StudentId, c => c);
+
+            var result = students.Select(s =>
+            {
+                VaccinationConsent? consent = consentDict.ContainsKey(s.StudentId) ? consentDict[s.StudentId] : null;
+                return new
+                {
+                    StudentId = s.StudentId,
+                    StudentName = s.Name,
+                    s.Class,
+                    ParentName = s.Parent != null ? s.Parent.Name : null,
+                    ConsentStatus = consent?.ConsentStatus,
+                    ConsentDate = consent?.ConsentDate,
+                    ConsentId = consent?.ConsentId,
+                    Notes = consent?.Notes
+                };
+            }).ToList();
+
+            return Ok(result);
+        }
+
+        [HttpGet("campaigns/consent-summary")]
+        [Authorize(Policy = "RequireManagerRole")]
+        public async Task<ActionResult<IEnumerable<object>>> GetConsentSummary()
+        {
+            var campaigns = await _context.VaccinationCampaigns.ToListAsync();
+            var result = new List<object>();
+
+            foreach (var c in campaigns)
+            {
+                var students = await _context.Students
+                    .Where(s => s.Class == c.TargetClass)
+                    .ToListAsync();
+
+                int total = students.Count;
+                int confirmed = 0, agreed = 0, rejected = 0;
+
+                foreach (var s in students)
+                {
+                    var consent = await _context.VaccinationConsents
+                        .Where(x => x.CampaignId == c.CampaignId && x.StudentId == s.StudentId)
+                        .FirstOrDefaultAsync();
+
+                    if (consent != null && consent.ConsentStatus != null)
+                    {
+                        confirmed++;
+                        if (consent.ConsentStatus == true)
+                            agreed++;
+                        else if (consent.ConsentStatus == false)
+                            rejected++;
+                    }
+                }
+
+                string status;
+                if (total == 0 || confirmed == 0)
+                    status = "pending";
+                else if (confirmed == total && agreed == total)
+                    status = "accepted";
+                else if (confirmed == total && rejected == total)
+                    status = "rejected";
+                else
+                    status = "pending";
+
+                result.Add(new { campaignId = c.CampaignId, status });
+            }
+
+            return Ok(result);
+        }
+
+        // === APIs cho tất cả user đã đăng nhập ===
+
+        [HttpGet("campaigns")]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<VaccinationCampaign>>> GetCampaigns()
+        {
+            var campaigns = await _context.VaccinationCampaigns.ToListAsync();
+            return Ok(campaigns);
+        }
+
+        // === NURSE APIs ===
+
+        [HttpGet("nurse/assigned-campaigns")]
+        [Authorize(Policy = "RequireNurseRole")]
+        public async Task<ActionResult<IEnumerable<object>>> GetAssignedCampaignsForNurse()
+        {
+            var accountIdClaim = User.FindFirst("AccountId") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+            if (accountIdClaim == null || !int.TryParse(accountIdClaim.Value, out int accountId))
+                return BadRequest(new { error = "Unable to identify nurse account" });
+
+            var nurse = await _context.SchoolNurses.FirstOrDefaultAsync(n => n.AccountId == accountId);
+            if (nurse == null)
+                return BadRequest(new { error = "Nurse not found" });
+
+            int nurseId = nurse.NurseId;
+
+            var campaigns = await _context.VaccinationAssignments
+                .Where(a => a.NurseId == nurseId)
+                .Include(a => a.Campaign)
+                .Select(a => new
+                {
+                    a.Campaign.CampaignId,
+                    a.Campaign.VaccineName,
+                    a.Campaign.ScheduleDate,
+                    a.Campaign.TargetClass,
+                    a.AssignedDate
+                })
+                .ToListAsync();
+
+            return Ok(campaigns);
+        }
+
+        [HttpGet("campaigns/{id}/schedule")]
+        [Authorize(Policy = "RequireNurseOrManagerRole")]
+        public async Task<ActionResult<IEnumerable<object>>> GetVaccinationSchedule(int id)
+        {
+            var campaign = await _context.VaccinationCampaigns.FindAsync(id);
+            if (campaign == null)
+                return NotFound(new { error = "Campaign not found" });
+
+            var students = await _context.Students
+                .Where(s => s.Class == campaign.TargetClass)
+                .Include(s => s.Parent)
+                    .ThenInclude(p => p.Account)
+                .ToListAsync();
+
+            var records = await _context.VaccinationRecords
+                .Where(r => r.CampaignId == id)
+                .ToListAsync();
+            var recordDict = records.ToDictionary(r => r.StudentId, r => r);
+
+            var data = students.Select(s =>
+            {
+                VaccinationRecord? record = recordDict.ContainsKey(s.StudentId) ? recordDict[s.StudentId] : null;
+                return new
+                {
+                    studentId = s.StudentId,
+                    studentName = s.Name,
+                    @class = s.Class,
+                    gender = s.Gender,
+                    parentId = s.Parent?.ParentId,
+                    parentName = s.Parent?.Name,
+                    parentPhone = s.Parent?.Phone,
+                    parentCccd = s.Parent?.Cccd,
+                    parentAccount = s.Parent?.Account?.Username,
+                    vaccineName = record?.VaccineName,
+                    nextDate = record?.FollowUpReminder ?? record?.DateOfVaccination,
+                    status = record?.Status ?? "Chưa tiêm"
+                };
+            }).ToList();
+
+            return Ok(data);
+        }
+
         [HttpPost("campaigns/{id}/attendance")]
         [Authorize(Policy = "RequireNurseRole")]
         public async Task<ActionResult> MarkAttendance(int id, [FromBody] List<AttendanceItem> attendance)
         {
             var campaign = await _context.VaccinationCampaigns.FindAsync(id);
-            if (campaign == null) return NotFound("Campaign not found");
+            if (campaign == null) return NotFound(new { error = "Campaign not found" });
 
             foreach (var item in attendance)
             {
@@ -269,69 +400,117 @@ namespace SchoolHeath.Controllers
                 else
                 {
                     record.Status = item.Present ? "Pending" : "Absent";
+                    record.AdministeredBy = item.NurseId;
                 }
             }
             await _context.SaveChangesAsync();
-            return Ok("Đã điểm danh học sinh.");
+            return Ok(new { message = "Đã điểm danh học sinh." });
         }
 
-        /// <summary>
-        /// Nurse: Record vaccination for a student (set status Done)
-        /// </summary>
         [HttpPost("record")]
         [Authorize(Policy = "RequireNurseRole")]
-        public async Task<ActionResult<VaccinationRecord>> RecordVaccination([FromBody] VaccinationRecord record)
+        public async Task<ActionResult> RecordVaccination([FromBody] VaccinationRecordDto dto)
         {
-            var student = await _context.Students.FindAsync(record.StudentId);
-            if (student == null) return BadRequest("Student not found");
-
-            var nurseIdClaim = User.FindFirst("NurseId");
-            if (nurseIdClaim != null && int.TryParse(nurseIdClaim.Value, out int nurseId))
-            {
-                record.AdministeredBy = nurseId;
-            }
-            else
-            {
-                var nurse = await _context.SchoolNurses.FirstOrDefaultAsync();
-                if (nurse != null)
-                {
-                    record.AdministeredBy = nurse.NurseId;
-                }
-                else
-                {
-                    return BadRequest("Unable to determine nurse");
-                }
-            }
-
-            if (record.DateOfVaccination == default)
-            {
-                record.DateOfVaccination = DateTime.UtcNow;
-            }
-            record.Status = "Done";
+            var student = await _context.Students.FindAsync(dto.StudentId);
+            if (student == null) return BadRequest(new { error = "Student not found" });
 
             var existing = await _context.VaccinationRecords
-                .FirstOrDefaultAsync(r => r.CampaignId == record.CampaignId && r.StudentId == record.StudentId);
+                .FirstOrDefaultAsync(r => r.CampaignId == dto.CampaignId && r.StudentId == dto.StudentId);
 
             if (existing == null)
             {
+                var record = new VaccinationRecord
+                {
+                    CampaignId = dto.CampaignId,
+                    StudentId = dto.StudentId,
+                    VaccineName = dto.VaccineName,
+                    AdministeredBy = dto.AdministeredBy,
+                    DateOfVaccination = dto.DateOfVaccination,
+                    Status = dto.Status
+                };
                 _context.VaccinationRecords.Add(record);
             }
             else
             {
-                existing.DateOfVaccination = record.DateOfVaccination;
-                existing.AdministeredBy = record.AdministeredBy;
-                existing.Status = "Done";
-                existing.FollowUpReminder = record.FollowUpReminder;
+                existing.DateOfVaccination = dto.DateOfVaccination;
+                existing.AdministeredBy = dto.AdministeredBy;
+                existing.Status = dto.Status;
             }
 
             await _context.SaveChangesAsync();
-            return Ok(record);
+            return Ok(new { message = "Đã ghi nhận tiêm chủng." });
         }
 
-        /// <summary>
-        /// Get upcoming vaccination campaigns
-        /// </summary>
+        // === PARENT APIs ===
+
+        [HttpGet("parent/consent-forms")]
+        [Authorize(Policy = "RequireParentRole")]
+        public async Task<ActionResult<IEnumerable<object>>> GetParentConsentForms()
+        {
+            var parentIdClaim = User.FindFirst("ParentId");
+            if (parentIdClaim == null || !int.TryParse(parentIdClaim.Value, out int parentId))
+                return BadRequest(new { error = "Unable to identify parent" });
+
+            var consentForms = await _context.VaccinationConsents
+                .Where(c => c.ParentId == parentId)
+                .Include(c => c.Student)
+                .Include(c => c.Campaign)
+                .OrderByDescending(c => c.ConsentDate)
+                .ThenByDescending(c => c.ConsentId)
+                .Select(c => new
+                {
+                    c.ConsentId,
+                    c.VaccineName,
+                    StudentName = c.Student.Name,
+                    c.Class,
+                    CampaignScheduleDate = c.Campaign != null ? c.Campaign.ScheduleDate : (DateTime?)null,
+                    c.ConsentStatus,
+                    c.ConsentDate,
+                    c.Notes,
+                    c.CampaignId
+                })
+                .ToListAsync();
+
+            return Ok(consentForms);
+        }
+
+        [HttpPut("parent/consent-forms/{consentId}")]
+        [Authorize(Policy = "RequireParentRole")]
+        public async Task<ActionResult> UpdateConsentForm(int consentId, [FromBody] UpdateConsentRequest request)
+        {
+            var parentIdClaim = User.FindFirst("ParentId");
+            if (parentIdClaim == null || !int.TryParse(parentIdClaim.Value, out int parentId))
+                return BadRequest(new { error = "Unable to identify parent" });
+
+            var consent = await _context.VaccinationConsents
+                .Include(c => c.Student)
+                .FirstOrDefaultAsync(c => c.ConsentId == consentId && c.ParentId == parentId);
+
+            if (consent == null)
+                return NotFound(new { error = "Consent form not found or does not belong to you" });
+
+            if (consent.ConsentStatus != null)
+                return BadRequest(new { error = "Phiếu này đã được xác nhận, không thể thay đổi." });
+
+            consent.ConsentStatus = request.ConsentStatus;
+            consent.Notes = request.Notes;
+            consent.ConsentDate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Đã cập nhật phiếu xác nhận tiêm chủng." });
+        }
+
+        [HttpPost("confirmations")]
+        [Authorize(Policy = "RequireParentRole")]
+        public ActionResult SubmitConfirmation()
+        {
+            return BadRequest(new { error = "Vui lòng xác nhận phiếu đã có bằng API PUT /parent/consent-forms/{consentId}" });
+        }
+
+        // === PUBLIC APIs ===
+
         [HttpGet("upcoming")]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<VaccinationCampaign>>> GetUpcomingCampaigns()
         {
             var today = DateTime.Today;
@@ -343,11 +522,32 @@ namespace SchoolHeath.Controllers
         }
     }
 
-    // DTO cho điểm danh
+    // DTOs
     public class AttendanceItem
     {
         public int StudentId { get; set; }
         public int NurseId { get; set; }
         public bool Present { get; set; }
+    }
+
+    public class UpdateConsentRequest
+    {
+        public bool ConsentStatus { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    public class VaccinationRecordDto
+    {
+        public int StudentId { get; set; }
+        public int CampaignId { get; set; }
+        public string VaccineName { get; set; } = null!;
+        public string Status { get; set; } = null!;
+        public DateTime DateOfVaccination { get; set; }
+        public int AdministeredBy { get; set; }
+    }
+
+    public class VaccinationAssignmentDto
+    {
+        public int NurseId { get; set; }
     }
 }
