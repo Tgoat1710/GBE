@@ -23,9 +23,7 @@ namespace SchoolHeath.Models // Sửa lại namespace cho đồng bộ toàn pro
 
         [Required]
         [Column("event_date", TypeName = "date")]
-        public DateTime EventDate { get; set; }
-
-        [MaxLength(500)]
+        public DateTime EventDate { get; set; }        [MaxLength(500)]
         [Column("description")]
         public string? Description { get; set; }
 
