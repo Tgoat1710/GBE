@@ -20,45 +20,6 @@ namespace SchoolHeath.Controllers
         {
             _context = context;
             _medicalEventService = medicalEventService;
-        }        // 0. Lấy danh sách tất cả sự kiện y tế (cho FE hiển thị)
-        [HttpGet]
-        // [Authorize(Policy = "RequireNurseRole")] // Tạm thời comment để test
-        public async Task<IActionResult> GetAllMedicalEvents()
-        {
-            var medicalEvents = await _context.MedicalEvents
-                .Include(me => me.Student)
-                .Include(me => me.HandledByNavigation)
-                .OrderByDescending(me => me.EventDate)
-                .Select(me => new
-                {
-                    // Thêm các field name mà FE expect để fix "N/A" và "Invalid Date"
-                    id = me.EventId,              // React cần unique ID cho key prop
-                    eventId = me.EventId,         // Backup field
-                    eventType = me.EventType,     // Loại sự cố
-                    dateTime = me.EventDate,      // Thời gian (field name mà FE expect)
-                    eventDate = me.EventDate,     // Backup field
-                    description = me.Description, // Mô tả
-                    outcome = me.Outcome,         // Kết quả
-                    notes = me.Notes,             // Ghi chú
-                    usedSupplies = me.UsedSupplies, // Vật tư đã dùng
-                    student = new
-                    {
-                        id = me.Student.StudentId,
-                        studentId = me.Student.StudentId,
-                        name = me.Student.Name,
-                        @class = me.Student.Class
-                    },
-                    handledBy = me.HandledByNavigation != null ? me.HandledByNavigation.Username : null,
-                    // Thêm formatted date string cho FE để tránh "Invalid Date"
-                    formattedDate = me.EventDate.ToString("dd/MM/yyyy HH:mm"),
-                    formattedTime = me.EventDate.ToString("HH:mm"),
-                    // Thêm các field khác mà FE có thể cần
-                    studentName = me.Student.Name,
-                    className = me.Student.Class
-                })
-                .ToListAsync();
-
-            return Ok(medicalEvents);
         }
 
         // 1. SchoolNurse tìm kiếm học sinh và phụ huynh
@@ -70,7 +31,8 @@ namespace SchoolHeath.Controllers
                 .Include(s => s.Parent)
                 .FirstOrDefaultAsync(s => s.StudentId == studentId);
 
-            if (student == null) return NotFound();            return Ok(new
+            if (student == null) return NotFound();
+            return Ok(new
             {
                 Student = new
                 {
@@ -80,7 +42,7 @@ namespace SchoolHeath.Controllers
                     Dob = student.Dob,
                     student.Gender
                 },
-                Parent = student.ParentId != null ? 
+                Parent = student.ParentId != null ?
                     await _context.Parents
                         .Where(p => p.ParentId == student.ParentId)
                         .Select(p => new
@@ -132,8 +94,10 @@ namespace SchoolHeath.Controllers
 
             if (incident == null) return NotFound();
             return Ok(incident);
-        }        // 4. Nurse xem danh sách sự cố y tế (có thể lọc theo học sinh, ngày, loại sự cố)
-        [HttpGet("search")]
+        }
+
+        // 4. Nurse xem danh sách sự cố y tế (có thể lọc theo học sinh, ngày, loại sự cố)
+        [HttpGet]
         [Authorize(Policy = "RequireNurseRole")]
         public async Task<IActionResult> GetMedicalEvents(
             [FromQuery] int? studentId,
@@ -167,7 +131,9 @@ namespace SchoolHeath.Controllers
                 .ToListAsync();
 
             return Ok(events);
-        }        // 5. Notify parent về sự cố y tế của học sinh
+        }
+
+        // 5. Notify parent về sự cố y tế của học sinh
         [HttpPost("{id}/notify")]
         [Authorize(Policy = "RequireNurseRole")]
         public async Task<IActionResult> NotifyParent(int id, [FromBody] NotifyParentDto dto)
@@ -188,7 +154,7 @@ namespace SchoolHeath.Controllers
                 parent = await _context.Parents
                     .FirstOrDefaultAsync(p => p.ParentId == incident.Student.ParentId);
             }
-            
+
             if (parent == null)
                 return NotFound("Không tìm thấy phụ huynh!");
 

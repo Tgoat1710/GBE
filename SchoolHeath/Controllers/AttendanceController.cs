@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+
 namespace SchoolHeath.Controllers
 {
     [Route("api/[controller]")]
@@ -24,8 +25,8 @@ namespace SchoolHeath.Controllers
         public async Task<ActionResult<IEnumerable<Attendance>>> GetAttendances()
         {
             return await _context.Attendances
-                .Include(a => a.Student)
                 .Include(a => a.Campaign)
+                .Include(a => a.Student)
                 .Include(a => a.Nurse)
                 .ToListAsync();
         }
@@ -35,8 +36,8 @@ namespace SchoolHeath.Controllers
         public async Task<ActionResult<Attendance>> GetAttendance(int id)
         {
             var attendance = await _context.Attendances
-                .Include(a => a.Student)
                 .Include(a => a.Campaign)
+                .Include(a => a.Student)
                 .Include(a => a.Nurse)
                 .FirstOrDefaultAsync(a => a.AttendanceId == id);
             if (attendance == null)
@@ -78,7 +79,8 @@ namespace SchoolHeath.Controllers
                 {
                     throw;
                 }
-            }            return NoContent();
+            }
+            return NoContent();
         }
     }
 }

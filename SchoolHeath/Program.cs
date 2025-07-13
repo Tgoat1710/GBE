@@ -19,6 +19,7 @@ namespace SchoolHeath
                 {
                     options.JsonSerializerOptions.DefaultIgnoreCondition =
                         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+                    options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase; // 👈 THÊM DÒNG NÀY
                 });
 
             builder.Services.AddEndpointsApiExplorer();
