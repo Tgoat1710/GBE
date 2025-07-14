@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolHeath.Models;
-using System.Collections.Generic;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -19,7 +19,6 @@ namespace SchoolHeath.Controllers
         }
 
         // GET: api/Notification?recipientId=123
-        // Lấy tất cả thông báo của một user (phụ huynh)
         [HttpGet]
         public async Task<IActionResult> GetNotifications([FromQuery] int recipientId)
         {
@@ -33,29 +32,25 @@ namespace SchoolHeath.Controllers
 
         // POST: api/Notification/notify-results-to-parent
         [HttpPost("notify-results-to-parent")]
-        public async Task<IActionResult> NotifyResultsToParent([FromBody] int scheduleId)
+        public async Task<IActionResult> NotifyResultsToParent([FromBody] int checkupId)
         {
-            var result = await _context.HealthCheckResults
-                .Include(r => r.Schedule)
-                .ThenInclude(s => s.Student)
-                .FirstOrDefaultAsync(r => r.ScheduleId == scheduleId);
+            var result = await _context.HealthCheckups
+                .Include(r => r.Student)
+                .FirstOrDefaultAsync(r => r.CheckupId == checkupId);
             if (result == null)
             {
-                return NotFound("No health check result found for this schedule.");
+                return NotFound("No health check result found for this checkup.");
             }
-            // Tạm thời trả về thông tin sẽ gửi cho phụ huynh
             var notification = new
             {
-                StudentName = result.Schedule.Student.Name,
-                ClassName = result.Schedule.Student.Class,
+                StudentName = result.Student.Name,
+                ClassName = result.Student.Class,
                 Results = new
                 {
-                    result.HeightCm,
-                    result.WeightKg,
+                    result.Height,
+                    result.Weight,
                     result.Vision,
-                    result.Dental,
                     result.BloodPressure,
-                    result.HeartRate,
                     result.Notes
                 }
             };
@@ -66,53 +61,85 @@ namespace SchoolHeath.Controllers
         [HttpGet("incomplete-students/{campaignId}")]
         public async Task<IActionResult> GetIncompleteStudents(int campaignId)
         {
-            var schedules = await _context.HealthCheckSchedules
-                .Include(s => s.Student)
-                .Where(s => s.CampaignId == campaignId)
+            var checkups = await _context.HealthCheckups
+                .Include(c => c.Student)
+                .Where(c => c.CampaignId == campaignId)
                 .ToListAsync();
-            var completedScheduleIds = await _context.HealthCheckResults
-                .Select(r => r.ScheduleId)
-                .ToListAsync();
-            var incomplete = schedules
-                .Where(s => !completedScheduleIds.Contains(s.ScheduleId))
-                .Select(s => new {
-                    s.Student.StudentId,
-                    s.Student.Name,
-                    s.Student.Class,
-                    s.ScheduledDate
+            // Logic xác định học sinh chưa đủ thông tin, bạn có thể tùy chỉnh
+            var incomplete = checkups
+                .Where(c => c.Height == null || c.Weight == null || c.Vision == null || c.BloodPressure == null)
+                .Select(c => new {
+                    c.Student.StudentId,
+                    c.Student.Name,
+                    c.Student.Class,
+                    c.CheckupDate
                 });
             return Ok(incomplete);
         }
 
         // POST: api/Notification/send-report-to-parent
         [HttpPost("send-report-to-parent")]
-        public async Task<IActionResult> SendReportToParent([FromBody] int scheduleId)
+        public async Task<IActionResult> SendReportToParent([FromBody] int checkupId)
         {
-            var result = await _context.HealthCheckResults
-                .Include(r => r.Schedule)
-                .ThenInclude(s => s.Student)
-                .FirstOrDefaultAsync(r => r.ScheduleId == scheduleId);
+            var result = await _context.HealthCheckups
+                .Include(r => r.Student)
+                .FirstOrDefaultAsync(r => r.CheckupId == checkupId);
             if (result == null)
             {
-                return NotFound("No health check result found for this schedule.");
+                return NotFound("No health check result found for this checkup.");
             }
-            // Tạm thời trả về thông tin phiếu kết quả sẽ gửi cho phụ huynh
             var report = new
             {
-                StudentName = result.Schedule.Student.Name,
-                ClassName = result.Schedule.Student.Class,
+                StudentName = result.Student.Name,
+                ClassName = result.Student.Class,
                 Results = new
                 {
-                    result.HeightCm,
-                    result.WeightKg,
+                    result.Height,
+                    result.Weight,
                     result.Vision,
-                    result.Dental,
                     result.BloodPressure,
-                    result.HeartRate,
                     result.Notes
                 }
             };
             return Ok(report);
         }
+
+        // POST: api/Notification/notify-health-check-schedule
+        // Gửi thông báo lịch khám sức khỏe cho phụ huynh theo chiến dịch
+        [HttpPost("notify-health-check-schedule")]
+        public async Task<IActionResult> NotifyHealthCheckSchedule([FromBody] int campaignId)
+        {
+            var checkups = await _context.HealthCheckups
+                .Include(c => c.Student)
+                .Where(c => c.CampaignId == campaignId)
+                .ToListAsync();
+
+            if (!checkups.Any())
+                return NotFound("Không có lịch khám nào cho chiến dịch này.");
+
+            foreach (var checkup in checkups)
+            {
+                var student = checkup.Student;
+                if (student == null) continue;
+
+                var parent = await _context.Parents.FirstOrDefaultAsync(p => p.ParentId == student.ParentId);
+                if (parent == null) continue;
+
+                var notification = new UserNotification
+                {
+                    RecipientId = parent.AccountId,
+                    Title = "Thông báo lịch khám sức khỏe",
+                    Message = $"Kính gửi quý phụ huynh, học sinh {student.Name} - lớp {student.Class} sẽ khám sức khỏe vào ngày {checkup.CheckupDate:dd/MM/yyyy}. Xin cảm ơn!",
+                    CreatedAt = DateTime.Now,
+                    IsRead = false,
+                    Type = "HealthCheck"
+                };
+                _context.UserNotifications.Add(notification);
+            }
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Đã gửi thông báo lịch khám sức khỏe cho phụ huynh." });
+        }
+
+        // ĐÃ XOÁ action NotifyParents bị trùng route với HealthCheckController
     }
 }
