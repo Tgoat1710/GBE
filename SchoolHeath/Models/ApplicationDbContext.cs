@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SchoolHeath.Models; // Namespace đồng nhất cho models
 
-namespace SchoolHeath.Models // Sửa lại cho đúng với project của bạn
+namespace SchoolHeath.Models
 {
     public partial class ApplicationDbContext : DbContext
     {
@@ -31,6 +31,7 @@ namespace SchoolHeath.Models // Sửa lại cho đúng với project của bạn
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Account entity
             modelBuilder.Entity<Account>(entity =>
             {
                 entity.HasKey(e => e.AccountId);
@@ -41,7 +42,10 @@ namespace SchoolHeath.Models // Sửa lại cho đúng với project của bạn
                 entity.Property(e => e.Role).HasColumnName("role").IsRequired().HasMaxLength(20);
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-                entity.Property(e => e.LastLogin).HasColumnName("last_login");            });            // Cấu hình relationship Student-Parent qua ParentId
+                entity.Property(e => e.LastLogin).HasColumnName("last_login");
+            });
+
+            // Cấu hình relationship Student-Parent qua ParentId
             modelBuilder.Entity<Student>()
                 .HasOne(s => s.Parent)
                 .WithMany(p => p.Students)
