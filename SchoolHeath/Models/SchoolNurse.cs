@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SchoolHeath.Models // Đồng bộ namespace với toàn project
+namespace SchoolHeath.Models
 {
     [Table("SchoolNurse")]
     public partial class SchoolNurse
@@ -33,5 +33,7 @@ namespace SchoolHeath.Models // Đồng bộ namespace với toàn project
         public virtual ICollection<MedicineInventory> MedicineInventories { get; set; } = new List<MedicineInventory>();
 
         public virtual ICollection<VaccinationRecord> VaccinationRecords { get; set; } = new List<VaccinationRecord>();
+
+        public virtual ICollection<HealthCampaign> HealthCampaigns { get; set; } = new List<HealthCampaign>();
     }
 }
