@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SchoolHeath.Models // Sửa lại namespace cho đồng bộ toàn project
+namespace SchoolHeath.Models
 {
     [Table("HealthCheckup")]
     public partial class HealthCheckup
@@ -40,8 +40,18 @@ namespace SchoolHeath.Models // Sửa lại namespace cho đồng bộ toàn pro
         [MaxLength(255)]
         public string? Notes { get; set; }
 
+        [Required]
+        [Column("campaign_id")]
+        public int CampaignId { get; set; }
+
         // Navigation properties
+        [ForeignKey(nameof(NurseId))]
         public virtual SchoolNurse? Nurse { get; set; }
+
+        [ForeignKey(nameof(StudentId))]
         public virtual Student Student { get; set; } = null!;
+
+        [ForeignKey(nameof(CampaignId))]
+        public virtual HealthCampaign Campaign { get; set; } = null!;
     }
 }
