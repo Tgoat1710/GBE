@@ -10,7 +10,7 @@ namespace SchoolHeath.Controllers
 {
     [Route("api/health-check/campaigns")]
     [ApiController]
-    [Authorize(Policy = "RequireManagerRole")]
+    [Authorize(Policy = "RequireNurseOrManagerRole")] // ĐÃ SỬA ĐỂ CHO SCHOOLNURSE TRUY CẬP
     public class HealthCampaignController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -35,7 +35,8 @@ namespace SchoolHeath.Controllers
                     Description = c.Description,
                     NurseId = c.NurseId,
                     NurseName = c.Nurse != null ? c.Nurse.Name : null,
-                    TargetClass = c.TargetClass
+                    TargetClass = c.TargetClass,
+                    Status = c.Status // THÊM TRƯỜNG STATUS VÀO DTO
                 })
                 .ToListAsync();
 
@@ -71,7 +72,8 @@ namespace SchoolHeath.Controllers
                 Description = c.Description,
                 NurseId = c.NurseId,
                 NurseName = c.Nurse != null ? c.Nurse.Name : null,
-                TargetClass = c.TargetClass
+                TargetClass = c.TargetClass,
+                Status = c.Status // THÊM TRƯỜNG STATUS VÀO DTO
             };
 
             return Ok(dto);
@@ -85,16 +87,25 @@ namespace SchoolHeath.Controllers
             if (campaign == null)
                 return NotFound();
 
-            // Status là string ("active"), không phải số. Sửa lại điều kiện cho đúng kiểu dữ liệu.
             var students = await _context.Students
-                .Where(s => s.Class == campaign.TargetClass && s.Status == "active")
+                .Where(s =>
+                    s.Class != null && campaign.TargetClass != null &&
+                    s.Class.Trim().ToLower() == campaign.TargetClass.Trim().ToLower() &&
+                    (
+                        s.Status != null &&
+                        (
+                            s.Status.Trim().ToLower() == "active" ||
+                            s.Status.Trim() == "1"
+                        )
+                    )
+                )
                 .Select(s => new StudentDto
                 {
                     Id = s.StudentId,
                     Name = s.Name ?? string.Empty,
                     Class = s.Class ?? string.Empty,
-                    Attended = false,      // Nếu có trường attended trong DB, hãy map đúng!
-                    Completed = false      // Nếu có trường completed trong DB, hãy map đúng!
+                    Attended = false,
+                    Completed = false
                 })
                 .ToListAsync();
 
@@ -105,6 +116,10 @@ namespace SchoolHeath.Controllers
         [HttpPost]
         public async Task<ActionResult<HealthCampaign>> CreateHealthCampaign(HealthCampaign campaign)
         {
+            // LUÔN SET STATUS MẶC ĐỊNH LÀ "planned" NẾU FE KHÔNG TRUYỀN LÊN
+            if (string.IsNullOrEmpty(campaign.Status))
+                campaign.Status = "planned";
+
             _context.HealthCampaigns.Add(campaign);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetHealthCampaign), new { id = campaign.CampaignId }, campaign);
@@ -160,6 +175,19 @@ namespace SchoolHeath.Controllers
             campaign.NurseId = nurse.NurseId;
             await _context.SaveChangesAsync();
             return Ok();
+        }
+
+        public class HealthCampaignDto
+        {
+            public int CampaignId { get; set; }
+            public string Name { get; set; }
+            public DateTime StartDate { get; set; }
+            public DateTime EndDate { get; set; }
+            public string? Description { get; set; }
+            public int? NurseId { get; set; }
+            public string? NurseName { get; set; }
+            public string? TargetClass { get; set; }
+            public string? Status { get; set; } // THÊM TRƯỜNG STATUS VÀO DTO
         }
 
         public class AssignSchoolNurseDto
