@@ -140,6 +140,29 @@ namespace SchoolHeath.Controllers
             return Ok(new { message = "Đã gửi thông báo lịch khám sức khỏe cho phụ huynh." });
         }
 
-        // ĐÃ XOÁ action NotifyParents bị trùng route với HealthCheckController
+        // POST: api/Notification/critical-notify/{studentId}
+        // Gửi thông báo nguy cấp cho phụ huynh của một học sinh
+        [HttpPost("critical-notify/{studentId}")]
+        public async Task<IActionResult> NotifyCriticalToParent(int studentId)
+        {
+            var student = await _context.Students.FindAsync(studentId);
+            if (student == null) return NotFound("Không tìm thấy học sinh.");
+
+            var parent = await _context.Parents.FirstOrDefaultAsync(p => p.ParentId == student.ParentId);
+            if (parent == null) return NotFound("Không tìm thấy phụ huynh.");
+
+            var notification = new UserNotification
+            {
+                RecipientId = parent.AccountId,
+                Title = "Cảnh báo sức khỏe nguy cấp",
+                Message = $"Kính gửi quý phụ huynh, học sinh {student.Name} - lớp {student.Class} đang có chỉ số sức khỏe NGUY CẤP. Đề nghị liên hệ nhà trường hoặc cơ sở y tế để được hỗ trợ kịp thời.",
+                CreatedAt = DateTime.Now,
+                IsRead = false,
+                Type = "Critical"
+            };
+            _context.UserNotifications.Add(notification);
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Đã gửi thông báo nguy cấp cho phụ huynh." });
+        }
     }
 }
