@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
-namespace SchoolHeath.Models // Sửa lại namespace cho đồng bộ toàn project
+namespace SchoolHeath.Models
 {
     [Table("MedicalEvent")]
     public partial class MedicalEvent
@@ -22,8 +22,15 @@ namespace SchoolHeath.Models // Sửa lại namespace cho đồng bộ toàn pro
         public string EventType { get; set; } = null!;
 
         [Required]
+        [MaxLength(50)]
+        [Column("severity")]
+        public string Severity { get; set; } = null!; // Thêm trường này
+
+        [Required]
         [Column("event_date", TypeName = "date")]
-        public DateTime EventDate { get; set; }        [MaxLength(500)]
+        public DateTime EventDate { get; set; }
+
+        [MaxLength(500)]
         [Column("description")]
         public string? Description { get; set; }
 
