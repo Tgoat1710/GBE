@@ -72,6 +72,7 @@ namespace SchoolHeath.Controllers
             {
                 StudentId = dto.StudentId,
                 EventType = dto.EventType,
+                Severity = dto.Severity, // Mapping trường mức độ
                 Description = dto.Description,
                 Outcome = dto.Outcome,
                 Notes = dto.Notes,
@@ -120,6 +121,8 @@ namespace SchoolHeath.Controllers
                     description = e.Description,
                     dateTime = e.EventDate,
                     eventType = e.EventType,
+                    incidentType = e.EventType, // <-- Thêm trường này để FE nhận đúng loại sự cố!
+                    severity = e.Severity, // Thêm trường severity trả ra cho FE
                     handledBy = e.HandledBy,
                     notes = e.Notes,
                     outcome = e.Outcome,
@@ -176,11 +179,12 @@ namespace SchoolHeath.Controllers
         }
     }
 
-    // DTO cho MedicalEvent (bạn cần tạo class này hoặc chỉnh lại cho phù hợp với project)
+    // DTO cho MedicalEvent (đã thêm trường Severity)
     public class MedicalEventDto
     {
         public int StudentId { get; set; }
         public string EventType { get; set; }
+        public string Severity { get; set; } // Thêm trường này
         public string Description { get; set; }
         public string? Outcome { get; set; }
         public string? Notes { get; set; }
