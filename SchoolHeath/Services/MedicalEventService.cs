@@ -15,16 +15,16 @@ namespace SchoolHeath.Services
             _context = context;
         }
 
-        // Ghi nhận sự cố y tế, cập nhật lịch sử và gửi thông báo
-        public async Task<MedicalEvent> RecordMedicalEventAsync(MedicalEvent incident)
+        // Ghi nhận sự cố y tế, cập nhật lịch sử và gửi thông báo
+        public async Task<MedicalEvent> RecordMedicalEventAsync(MedicalEvent incident)
         {
-            // 1. Lưu sự cố y tế
-            incident.EventDate = DateTime.UtcNow;
+            // 1. Lưu sự cố y tế
+            incident.EventDate = DateTime.UtcNow;
             _context.MedicalEvents.Add(incident);
             await _context.SaveChangesAsync();
 
-            // 2. Cập nhật lịch sử y tế
-            var healthRecord = await _context.HealthRecords.FirstOrDefaultAsync(h => h.StudentId == incident.StudentId);
+            // 2. Cập nhật lịch sử y tế
+            var healthRecord = await _context.HealthRecords.FirstOrDefaultAsync(h => h.StudentId == incident.StudentId);
             if (healthRecord != null)
             {
                 string newHistory = $"{DateTime.UtcNow:yyyy-MM-dd HH:mm}: {incident.EventType} - {incident.Description}; ";
@@ -33,8 +33,8 @@ namespace SchoolHeath.Services
                 await _context.SaveChangesAsync();
             }
 
-            // 3. Gửi thông báo cho phụ huynh
-            var student = await _context.Students.FirstOrDefaultAsync(s => s.StudentId == incident.StudentId);
+            // 3. Gửi thông báo cho phụ huynh
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.StudentId == incident.StudentId);
             if (student == null) return null;
             var parent = await _context.Parents.FirstOrDefaultAsync(p => p.ParentId == student.ParentId);
             if (parent != null)
@@ -55,4 +55,4 @@ namespace SchoolHeath.Services
             return incident;
         }
     }
-} 
+}

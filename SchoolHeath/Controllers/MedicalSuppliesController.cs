@@ -36,7 +36,21 @@ namespace SchoolHeath.Controllers
                 return NotFound(new { error = "Vật tư y tế không tồn tại" });
             }
             return Ok(supply);
-        }        // Cập nhật số lượng tồn kho
+        }
+
+        // Thêm mới vật tư y tế - BỔ SUNG ACTION NÀY
+        [HttpPost]
+        public async Task<IActionResult> CreateSupply([FromBody] MedicineInventory model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            await _context.MedicineInventories.AddAsync(model);
+            await _context.SaveChangesAsync();
+            return Ok(model);
+        }
+
+        // Cập nhật số lượng tồn kho
         [HttpPatch("{id}/stock")]
         public async Task<IActionResult> UpdateStock(int id, [FromBody] UpdateStockDto dto)
         {
@@ -48,8 +62,9 @@ namespace SchoolHeath.Controllers
 
             supply.Quantity = dto.NewQuantity;
             await _context.SaveChangesAsync();
-            
-            return Ok(new { 
+
+            return Ok(new
+            {
                 message = "Cập nhật số lượng tồn kho thành công",
                 medicineId = supply.MedicineId,
                 newQuantity = supply.Quantity

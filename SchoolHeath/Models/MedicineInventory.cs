@@ -28,6 +28,11 @@ namespace SchoolHeath.Models // Đổi namespace cho đồng bộ toàn project
         [Column("expiration_date", TypeName = "date")]
         public DateTime ExpirationDate { get; set; }
 
+        [Required]
+        [MaxLength(100)]
+        [Column("location")]
+        public string Location { get; set; } = null!; // <-- bổ sung trường vị trí
+
         // Navigation properties
         public virtual ICollection<MedicationRequest> MedicationRequests { get; set; } = new List<MedicationRequest>();
 

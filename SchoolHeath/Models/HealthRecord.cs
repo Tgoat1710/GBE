@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SchoolHeath.Models // Sửa lại namespace cho đồng bộ project
+namespace SchoolHeath.Models
 {
     [Table("HealthRecord")]
     public partial class HealthRecord
@@ -31,11 +31,10 @@ namespace SchoolHeath.Models // Sửa lại namespace cho đồng bộ project
         [MaxLength(255)]
         public string? MedicalHistory { get; set; }
 
-        [Required]
         [Column("updated_at")]
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; }
 
-        // Navigation property
-        public virtual Student Student { get; set; } = null!;
+        // Định nghĩa navigation property để EF hỗ trợ Include
+        public virtual Student? Student { get; set; }
     }
 }
